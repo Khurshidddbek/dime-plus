@@ -240,7 +240,8 @@ enum LogActions {
     // MARK: clipboard
 
     static func copyAmount(_ amount: Double) {
-        UIPasteboard.general.string = MoneyFormat.plainString(abs(amount))
+        // Through SMSClipboard: our own copy must not light up the "paste bank SMS" chip.
+        SMSClipboard.shared.copy(MoneyFormat.plainString(abs(amount)))
         ToastCenter.shared.info(String(localized: "Amount copied"), icon: "doc.on.doc.fill")
     }
 }

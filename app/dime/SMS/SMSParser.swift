@@ -179,14 +179,26 @@ enum SMSParser {
     static func parse(_ raw: String, receivedAt: Date = Date()) -> ParsedSMS {
         let text = SMSText.normalize(raw)
 
+        // A lead-in with a colon ("[12.03.25, 16:06] UZCARD: ") lets the Uzcard template match the
+        // whole text with a junk operation, so a half-read candidate does not stop the search.
+        var halfRead: ParsedSMS?
+
         for candidate in templateCandidates(text) {
-            if let parsed = parseHumo(candidate, receivedAt: receivedAt) {
+            guard let parsed = parseHumo(candidate, receivedAt: receivedAt) ?? parseUzcard(candidate, receivedAt: receivedAt) else {
+                continue
+            }
+
+            if parsed.confidence == 1 {
                 return parsed
             }
 
-            if let parsed = parseUzcard(candidate, receivedAt: receivedAt) {
-                return parsed
+            if halfRead == nil {
+                halfRead = parsed
             }
+        }
+
+        if let parsed = halfRead {
+            return parsed
         }
 
         return parseGeneric(text, receivedAt: receivedAt)
@@ -217,9 +229,21 @@ enum SMSParser {
     static func splitMessages(_ blob: String) -> [String] {
         // 1. Every "HUMOCARD *" starts a new message even without a line break.
         let marked = NSMutableString(string: blob)
-        let starts = humoStart.matches(in: blob, options: [], range: NSRange(location: 0, length: (blob as NSString).length))
+        let source = blob as NSString
+        let starts = humoStart.matches(in: blob, options: [], range: NSRange(location: 0, length: source.length))
 
         for match in starts.reversed() where match.range.location > 0 {
+            // Only a previous message on the same line is cut off. A short lead-in
+            // ("[12.03.2025, 16:06] HUMOCARD: ") stays with its message: the templates skip it,
+            // and on a line of its own it would land in the inbox as unrecognised.
+            let before = source.substring(to: match.range.location) as NSString
+            let lineBreak = before.rangeOfCharacter(from: .newlines, options: .backwards)
+            let lead = lineBreak.location == NSNotFound ? (before as String) : before.substring(from: lineBreak.location + lineBreak.length)
+
+            if lead.count <= 40, !lead.contains(";") {
+                continue
+            }
+
             marked.insert("\n", at: match.range.location)
         }
 

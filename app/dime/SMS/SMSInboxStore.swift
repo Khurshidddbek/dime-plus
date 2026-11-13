@@ -145,9 +145,11 @@ final class SMSInboxStore: ObservableObject {
 
     // MARK: Inbox
 
-    func add(_ suggestions: [SMSSuggestion]) {
+    /// False when the inbox file could not be written: the messages then live only in memory.
+    @discardableResult
+    func add(_ suggestions: [SMSSuggestion]) -> Bool {
         guard !suggestions.isEmpty else {
-            return
+            return true
         }
 
         pending = Self.sorted(pending + suggestions)
@@ -156,7 +158,7 @@ final class SMSInboxStore: ObservableObject {
             fingerprints.insert(suggestion.parsed.fingerprint)
         }
 
-        saveInbox()
+        return saveInbox()
     }
 
     func update(_ suggestion: SMSSuggestion) {
@@ -249,12 +251,13 @@ final class SMSInboxStore: ObservableObject {
         fingerprints = all
     }
 
-    private func saveInbox() {
+    @discardableResult
+    private func saveInbox() -> Bool {
         guard isUsable else {
-            return
+            return false
         }
 
-        inboxFile.save(pending)
+        return inboxFile.save(pending)
     }
 
     private func saveLedger() {

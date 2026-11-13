@@ -440,6 +440,14 @@ struct SMSInboxView: View {
     }
 
     private func confirm(_ suggestion: SMSSuggestion, _ category: SMSCategoryInfo?) {
+        if suggestion.has(.foreignCurrency), editScreen != nil {
+            // The number in the message is in another currency. Adding it as is would log a wrong
+            // amount, so the entry screen opens for the owner to type what the bank really took.
+            Haptics.tap()
+            editing = ingestor.draftRequest(for: suggestion)
+            return
+        }
+
         guard let category = category else {
             // Nothing to add to yet: open the picker instead of failing silently.
             Haptics.warning()
@@ -674,7 +682,9 @@ struct SMSSuggestionCard: View {
         .smsCard()
         .offset(x: dragOffset)
         .background(swipeBackground)
-        .simultaneousGesture(swipe)
+        // Off while the category row is open: scrolling it sideways would also swipe the card
+        // and skip or add the message on release.
+        .simultaneousGesture(swipe, including: expanded ? .subviews : .all)
         .accessibilityAction(named: Text("Skip")) {
             onAction(.skip)
         }
@@ -882,8 +892,8 @@ struct SMSSuggestionCard: View {
                     }
                 } else {
                     SMSPillButton(
-                        title: category == nil ? String(localized: "Choose category") : String(localized: "Add"),
-                        systemImage: category == nil ? nil : "checkmark"
+                        title: mainTitle,
+                        systemImage: typesAmountByHand || category == nil ? nil : "checkmark"
                     ) {
                         onAction(.confirm)
                     }
@@ -928,6 +938,19 @@ struct SMSSuggestionCard: View {
                 }
             }
         }
+    }
+
+    // Another currency: the main button opens the entry screen instead of adding (see SMSInboxView.confirm).
+    private var typesAmountByHand: Bool {
+        suggestion.has(.foreignCurrency) && canEdit
+    }
+
+    private var mainTitle: String {
+        if typesAmountByHand {
+            return String(localized: "Add manually")
+        }
+
+        return category == nil ? String(localized: "Choose category") : String(localized: "Add")
     }
 
     private var logTitle: String {

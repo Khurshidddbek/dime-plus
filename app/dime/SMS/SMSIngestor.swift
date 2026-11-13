@@ -415,7 +415,11 @@ final class SMSIngestor {
         }
 
         inbox.append(ledgerEntries)
-        inbox.add(toReview)
+
+        if !inbox.add(toReview) {
+            // Not on disk: a background run may be killed before the next write.
+            result.failed = true
+        }
 
         for suggestion in toReview {
             if suggestion.isUnrecognised {
@@ -620,8 +624,11 @@ final class SMSIngestor {
     // MARK: Full entry screen
 
     func draftRequest(for suggestion: SMSSuggestion) -> SMSDraftRequest {
-        SMSDraftRequest(
-            id: suggestion.id, note: suggestion.parsed.merchantDisplay, amount: Self.amount(for: suggestion.parsed),
+        // 45.99 USD is not 45.99 in the app currency: the amount is left empty and typed by hand.
+        let amount = suggestion.has(.foreignCurrency) ? 0 : Self.amount(for: suggestion.parsed)
+
+        return SMSDraftRequest(
+            id: suggestion.id, note: suggestion.parsed.merchantDisplay, amount: amount,
             date: suggestion.parsed.date, income: suggestion.isIncome, categoryID: suggestion.suggestedCategoryID
         )
     }
