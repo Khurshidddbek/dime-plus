@@ -171,7 +171,8 @@ enum SMSParser {
             return regex
         }
 
-        return NSRegularExpression()
+        // "(?!)" never matches and is always a valid pattern.
+        return try! NSRegularExpression(pattern: "(?!)")
     }
 
     // MARK: Entry points
