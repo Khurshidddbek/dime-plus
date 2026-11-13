@@ -56,6 +56,24 @@ enum SMSFormat {
         }
     }
 
+    /// "Humo *4417 -> Uzcard *8821" with a real arrow.
+    static func pairTitle(_ pair: SMSTransferPair, cards: SMSCardStore) -> String {
+        cards.displayName(for: pair.fromCard) + " \u{2192} " + cards.displayName(for: pair.toCard)
+    }
+
+    /// "12 Mar, 03:39, fee 2 786 so'm"
+    static func pairSubtitle(_ pair: SMSTransferPair, date: Date) -> String {
+        let when = dateText(date)
+
+        guard pair.feeMinor > 0 else {
+            return when
+        }
+
+        let fee = MoneyFormat.string(SMSIngestor.amount(minor: pair.feeMinor))
+
+        return when + ", " + String(localized: "fee \(fee)")
+    }
+
     /// "Humo *4417, 12 Mar, 16:06"
     static func subtitle(_ parsed: ParsedSMS, cards: SMSCardStore) -> String {
         let card = cards.displayName(for: parsed.cardLast4)
@@ -238,6 +256,8 @@ struct SMSPillButton: View {
     var systemImage: String?
     var prominent: Bool = true
     var destructive: Bool = false
+    /// Full width, for buttons stacked under each other.
+    var fills: Bool = false
     let action: () -> Void
 
     private var foreground: Color {
@@ -263,7 +283,7 @@ struct SMSPillButton: View {
             }
             .foregroundColor(foreground)
             .padding(.horizontal, 14)
-            .frame(minHeight: 44)
+            .frame(maxWidth: fills ? .infinity : nil, minHeight: 44)
             .background(
                 prominent ? Color.DarkBackground : Color.PrimaryBackground,
                 in: RoundedRectangle(cornerRadius: 13, style: .continuous)

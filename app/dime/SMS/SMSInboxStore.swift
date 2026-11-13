@@ -37,6 +37,8 @@ struct SMSSuggestion: Codable, Identifiable, Equatable {
     var flags: [Flag]
     var source: SMSSource
     var batchID: UUID?
+    /// Set when this message is one half of a move between own cards.
+    var pair: SMSTransferPair? = nil
 
     var isIncome: Bool {
         parsed.direction == .income
@@ -53,6 +55,21 @@ struct SMSSuggestion: Codable, Identifiable, Equatable {
 
     func has(_ flag: Flag) -> Bool {
         flags.contains(flag)
+    }
+}
+
+/// Both halves of a move between own cards: money left one card and came to another.
+struct SMSTransferPair: Codable, Equatable {
+    var fromCard: String
+    var toCard: String
+    var outMinor: Int64
+    var inMinor: Int64
+    /// The other half while it waits in the inbox. Nil when it was handled before.
+    var partnerID: UUID?
+
+    /// What the banks kept on the way: 844051.95 out, 835695.00 in.
+    var feeMinor: Int64 {
+        max(0, outMinor - inMinor)
     }
 }
 

@@ -879,3 +879,28 @@
 "Average transaction" = "Средняя операция";
 "Transactions count" = "Операций";
 "Largest transaction" = "Самая крупная операция";
+
+/* sms fix round */
+"Transfer fee" = "Комиссия за перевод";
+"fee %@" = "комиссия %@";
+"Already there" = "Уже есть";
+"My transfer" = "Свой перевод";
+"As cash" = "Как наличные";
+"As income" = "Как доход";
+"As expense" = "Как расход";
+"Log the fee" = "Записать комиссию";
+"No date in the message" = "Нет даты в SMS";
+"Declined, no money moved. Skipped" = "Операция отклонена, деньги не списаны. Пропущено";
+"Code or password. Skipped" = "Код или пароль. Пропущено";
+"Between own cards, skipped by default: %lld" = "Между своими картами, будут пропущены: %lld";
+"Not operations, skipped: %lld" = "Не операции, пропущено: %lld";
+"Open the Shortcuts app and tap + to make a new shortcut." = "Откройте приложение Команды и нажмите +, чтобы создать новую команду.";
+"In the action search open the Automation category and choose the Message trigger." = "В поиске действий откройте категорию Автоматизация и выберите триггер Сообщение.";
+"Tap Sender is and type HUMOCARD, then add CARDINFO as a second sender. Type them as text, they are not in your contacts." = "Нажмите Отправитель совпадает с и введите HUMOCARD, потом добавьте второго отправителя CARDINFO. Вводите текстом, в контактах их нет.";
+"Add the action Add Bank SMS from Dime+." = "Добавьте действие Добавить SMS банка из Dime+.";
+"In its Message text field choose the message content (Shortcut Input)." = "В поле Текст сообщения выберите содержимое сообщения (Входные данные команды).";
+"Set it to run immediately without asking and turn off the notification when it runs. Tap Done." = "Включите запуск сразу, без подтверждения, и выключите уведомление о запуске. Нажмите Готово.";
+"Senders" = "Отправители";
+"HUMOCARD sends the Humo messages, CARDINFO the Uzcard ones. Tap a name to copy it." = "HUMOCARD присылает SMS по Humo, CARDINFO по Uzcard. Нажмите на имя, чтобы скопировать.";
+"No Sender is on an older iOS? Use Message Contains with one of these words instead, one automation per word: %@." = "На старой iOS нет пункта Отправитель? Выберите Сообщение содержит и одно из этих слов, по одной автоматизации на слово: %@.";
+"Type the sender exactly as shown, in capital letters." = "Вводите отправителя точно как здесь, заглавными буквами.";

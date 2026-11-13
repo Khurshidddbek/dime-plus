@@ -82,8 +82,7 @@ final class SMSCardStore: ObservableObject {
 
     // MARK: Changes
 
-    /// Every card seen in a bank message is the owner's: the SMS came to his phone.
-    /// Also keeps the newest balance of the card.
+    /// Learns the cards seen in bank messages and keeps the newest balance of each.
     func note(_ messages: [ParsedSMS]) {
         var changed = false
 
@@ -112,9 +111,13 @@ final class SMSCardStore: ObservableObject {
                     changed = true
                 }
             } else {
+                // A Humo or Uzcard message, or any message with the card balance, comes only to the
+                // card holder. A bare card mask in another format may be someone else's card.
+                let own = sms.format != "generic" || sms.balanceMinor != nil
+
                 cards.append(
                     SMSCard(
-                        last4: last4, network: network, nickname: "", isOwn: true,
+                        last4: last4, network: network, nickname: "", isOwn: own,
                         lastBalanceMinor: sms.balanceMinor, lastBalanceCurrency: sms.currency,
                         lastSeenAt: sms.dateFromText ? sms.date : nil
                     )

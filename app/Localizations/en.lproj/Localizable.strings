@@ -876,3 +876,28 @@
 "Average transaction" = "Average transaction";
 "Transactions count" = "Transactions";
 "Largest transaction" = "Largest transaction";
+
+/* sms fix round */
+"Transfer fee" = "Transfer fee";
+"fee %@" = "fee %@";
+"Already there" = "Already there";
+"My transfer" = "My transfer";
+"As cash" = "As cash";
+"As income" = "As income";
+"As expense" = "As expense";
+"Log the fee" = "Log the fee";
+"No date in the message" = "No date in the message";
+"Declined, no money moved. Skipped" = "Declined, no money moved. Skipped";
+"Code or password. Skipped" = "Code or password. Skipped";
+"Between own cards, skipped by default: %lld" = "Between own cards, skipped by default: %lld";
+"Not operations, skipped: %lld" = "Not operations, skipped: %lld";
+"Open the Shortcuts app and tap + to make a new shortcut." = "Open the Shortcuts app and tap + to make a new shortcut.";
+"In the action search open the Automation category and choose the Message trigger." = "In the action search open the Automation category and choose the Message trigger.";
+"Tap Sender is and type HUMOCARD, then add CARDINFO as a second sender. Type them as text, they are not in your contacts." = "Tap Sender is and type HUMOCARD, then add CARDINFO as a second sender. Type them as text, they are not in your contacts.";
+"Add the action Add Bank SMS from Dime+." = "Add the action Add Bank SMS from Dime+.";
+"In its Message text field choose the message content (Shortcut Input)." = "In its Message text field choose the message content (Shortcut Input).";
+"Set it to run immediately without asking and turn off the notification when it runs. Tap Done." = "Set it to run immediately without asking and turn off the notification when it runs. Tap Done.";
+"Senders" = "Senders";
+"HUMOCARD sends the Humo messages, CARDINFO the Uzcard ones. Tap a name to copy it." = "HUMOCARD sends the Humo messages, CARDINFO the Uzcard ones. Tap a name to copy it.";
+"No Sender is on an older iOS? Use Message Contains with one of these words instead, one automation per word: %@." = "No Sender is on an older iOS? Use Message Contains with one of these words instead, one automation per word: %@.";
+"Type the sender exactly as shown, in capital letters." = "Type the sender exactly as shown, in capital letters.";

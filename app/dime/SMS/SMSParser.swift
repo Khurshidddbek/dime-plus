@@ -30,6 +30,13 @@ enum SMSKind: String, Codable {
     case unknown // could not tell what it is
 }
 
+/// Why a message is not an operation. Shown in the paste preview.
+enum SMSSkipReason: String, Codable {
+    case declined // "Nedostatochno sredstv", "rad etildi": no money moved
+    case code // one-time code or password
+    case info // contract, loan approval, service notice
+}
+
 enum SMSDirection: String, Codable {
     case expense
     case income
@@ -56,6 +63,8 @@ struct ParsedSMS: Codable, Equatable {
     var namesTwoNetworks: Bool
     var confidence: Double // 1 template, 0.5 generic with direction, 0.3 generic without, 0 no amount
     var fingerprint: String
+    /// Set together with kind `.ignored`.
+    var skipReason: SMSSkipReason? = nil
 
     var amount: Decimal? {
         amountMinor.map { Decimal($0) / 100 }
@@ -156,7 +165,8 @@ enum SMSParser {
     // "Humo to Visa", "UZCARD TO VISA". No "-" and no ">" among the connectors:
     // "MC-MIR SHOP" is a shop and ">" separates the city in Humo messages.
     private static let networks = "(?:humo|uzcard|visa|mastercard|master|mc|mir|unionpay|upi)"
-    private static let networkPair = rx(#"\b"# + networks + #"\s*(?:to|2|na)\s*"# + networks + #"\b"#)
+    // "HUMO NA UZ" (TBC) names Uzcard as plain "uz", only on the receiving side.
+    private static let networkPair = rx(#"\b"# + networks + #"\s*(?:to|2|na)\s*(?:"# + networks + #"|uz)\b"#)
     private static let transferWord = rx(#"\b(?:p2p|h2u|u2h|h2h|u2u|h2v|u2v|v2h|v2u|card2card|c2c|perevod|otkazma)\b"#)
 
     private static let humoStart = rx(#"HUMO\s*CARD\s*\*"#)
@@ -179,6 +189,11 @@ enum SMSParser {
 
     static func parse(_ raw: String, receivedAt: Date = Date()) -> ParsedSMS {
         let text = SMSText.normalize(raw)
+
+        // A declined operation moved no money, whatever format it comes in.
+        if hasDeclineMarker(text) {
+            return skipped(text, reason: .declined, receivedAt: receivedAt)
+        }
 
         // A lead-in with a colon ("[12.03.25, 16:06] UZCARD: ") lets the Uzcard template match the
         // whole text with a junk operation, so a half-read candidate does not stop the search.
@@ -409,8 +424,7 @@ enum SMSParser {
         case .some(.payment):
             kind = .payment
             direction = .expense
-        case .some(.otp), .none:
-            // A full template with an amount is never a one-time code: keep it visible.
+        case .none:
             kind = .unknown
         }
 
@@ -450,6 +464,7 @@ enum SMSParser {
 
     private static func parseGeneric(_ text: String, receivedAt: Date) -> ParsedSMS {
         let operation = classify(text)
+        let folded = SMSText.fold(text) + " "
         let cardMatch = genericCard.groups(in: text)
         let balanceMatch = genericBalance.firstMatch(in: text)
         let ns = text as NSString
@@ -462,13 +477,15 @@ enum SMSParser {
             fingerprint: fingerprint(card: nil, direction: nil, amountMinor: nil, parsedDate: nil, balanceMinor: nil, text: text)
         )
 
-        let codeOrDeclined = operation == .otp || operation == .declined
+        // Whole words only, so a merchant like "KODAK" does not hide a real payment.
+        if codeWords.contains(where: { containsWord($0, in: folded) }) {
+            return skipped(text, reason: .code, receivedAt: receivedAt)
+        }
 
-        // A code or a declined operation is dropped only when the text has neither a card mask nor
-        // a balance. Otherwise a merchant like "KODAK" would make a real payment vanish.
-        if codeOrDeclined, cardMatch == nil, balanceMatch == nil {
-            result.kind = .ignored
-            return result
+        // "Shartnoma summasi: 13608000.00 so'm" is a contract, not a payment. A card mask means a real
+        // card operation that only mentions such a word, so it stays.
+        if cardMatch == nil, infoStems.contains(where: { containsStem($0, in: folded) }) {
+            return skipped(text, reason: .info, receivedAt: receivedAt)
         }
 
         // The balance is blanked out so it is not taken for the amount.
@@ -503,27 +520,32 @@ enum SMSParser {
             return result
         }
 
+        switch operation {
+        case .some(.cash):
+            result.kind = .atmWithdrawal
+            result.direction = .expense
+        case .some(.refund):
+            result.kind = .refund
+            result.direction = .income
+        case .some(.income):
+            result.kind = .topUp
+            result.direction = .income
+        case .some(.payment):
+            result.kind = .payment
+            result.direction = .expense
+        default:
+            break
+        }
+
+        // An amount alone is not an operation: without a card mask and without an operation word the
+        // text stays unrecognised (only shown for review), it never becomes an expense.
+        if result.cardLast4 == nil, result.direction == nil {
+            result.kind = .unknown
+            return result
+        }
+
         result.amountMinor = amountMinor
         result.currency = normalizedCurrency(restNS.substring(with: amountMatch.range(at: 2)))
-
-        if !codeOrDeclined {
-            switch operation {
-            case .some(.cash):
-                result.kind = .atmWithdrawal
-                result.direction = .expense
-            case .some(.refund):
-                result.kind = .refund
-                result.direction = .income
-            case .some(.income):
-                result.kind = .topUp
-                result.direction = .income
-            case .some(.payment):
-                result.kind = .payment
-                result.direction = .expense
-            default:
-                break
-            }
-        }
 
         // Merchant: the longest ";" or "," segment that is not a card, a date or an operation word.
         let withoutAmount = restNS.replacingCharacters(in: amountMatch.range, with: " ; ")
@@ -600,7 +622,6 @@ enum SMSParser {
     // MARK: OperationClass classifier
 
     private enum OperationClass {
-        case otp
         case declined
         case cash
         case refund
@@ -608,16 +629,49 @@ enum SMSParser {
         case payment
     }
 
-    // Order matters, the first hit wins. "otkaz" alone is NOT a declined stem: after folding it
-    // also matches "Kartaga o'tkazma" (a real incoming transfer), so the declined row uses
-    // "otkazano" / "otkaz v", and "kartaga otkazma" is checked before the bare "otkazma".
+    // Prefix stems of a declined operation: Russian (Latin and Cyrillic), Uzbek (Latin and Cyrillic), English.
+    // "otkaz" alone is NOT here: after folding it is also the start of "Kartaga o'tkazma" (a real
+    // incoming transfer), so it is matched as a whole word only (`declineWords`).
+    private static let declineStems: [String] = [
+        "nedostatochno", "otkazano", "otklon", "ne proshl", "ne vypolnen", "neuspeshn",
+        "rad etildi", "rad qilindi", "yetarli emas", "mablag yetarli",
+        "declin", "insufficient", "rejected", "not enough",
+        "недостаточно", "отказ", "отклон", "не прошл", "не выполнен", "неуспешн",
+        "рад этилди", "рад қилинди", "етарли эмас",
+    ].map { SMSText.fold($0) }
+
+    private static let declineWords: [String] = ["otkaz"].map { SMSText.fold($0) }
+
+    // One-time codes and passwords, whole words.
+    private static let codeWords: [String] = [
+        "kod", "kodi", "koda", "kodu", "code", "otp", "parol", "parolni", "parolingiz", "password",
+        "код", "кода", "коди", "пароль", "пароли",
+    ].map { SMSText.fold($0) }
+
+    // Contracts, loans and notices that carry a sum but are not a card operation.
+    private static let infoStems: [String] = [
+        "shartnoma", "dogovor", "muddat", "oylik tolov", "kredit tasdiqlandi", "kredit odobren",
+        "usluga sms", "sms-servis", "sms servis", "istemol",
+        "шартнома", "договор", "муддат", "ойлик тўлов", "кредит одобрен",
+    ].map { SMSText.fold($0) }
+
+    static func hasDeclineMarker(_ text: String) -> Bool {
+        let folded = SMSText.fold(text) + " "
+
+        return declineStems.contains { containsStem($0, in: folded) }
+            || declineWords.contains { containsWord($0, in: folded) }
+    }
+
+    /// True when the merchant text names a card to card transfer ("P2P", "H2U", "Humo to Visa").
+    static func hasTransferMarker(_ merchant: String) -> Bool {
+        transferMarker(in: merchant).any
+    }
+
+    // Order matters, the first hit wins. "kartaga otkazma" is checked before the bare "otkazma".
     private static let operationStems: [(operation: OperationClass, stems: [String])] = {
         let table: [(OperationClass, [String])] = [
-            (.otp, ["kod", "code", "parol", "password", "podtverzhd", "tasdiqlash", "код", "пароль", "подтвержд"]),
-            (.declined, [
-                "otkazano", "otkaz v", "otklon", "rad etildi", "declin", "insufficient", "nedostatochno", "yetarli emas",
-                "отказ", "отклон", "недостаточно", "рад этилди",
-            ]),
+            // Prefix stems only: the whole word "otkaz" would also catch "otkazma".
+            (.declined, declineStems),
             (.cash, [
                 "bankomat", "naqd pul", "snyatie", "nalichn", "cash withdraw", "atm ",
                 "банкомат", "снятие", "наличн", "нақд пул",
@@ -675,6 +729,30 @@ enum SMSParser {
             let previous = folded[folded.index(before: range.lowerBound)]
 
             if !previous.isLetter {
+                return true
+            }
+
+            searchStart = folded.index(after: range.lowerBound)
+        }
+
+        return false
+    }
+
+    /// The word must stand alone: "otkaz" matches "otkaz v operatsii" but not "otkazma".
+    private static func containsWord(_ word: String, in folded: String) -> Bool {
+        if word.isEmpty {
+            return false
+        }
+
+        var searchStart = folded.startIndex
+
+        while searchStart < folded.endIndex,
+              let range = folded.range(of: word, options: [.literal], range: searchStart ..< folded.endIndex)
+        {
+            let startsWord = range.lowerBound == folded.startIndex || !folded[folded.index(before: range.lowerBound)].isLetter
+            let endsWord = range.upperBound == folded.endIndex || !folded[range.upperBound].isLetter
+
+            if startsWord, endsWord {
                 return true
             }
 
@@ -824,6 +902,18 @@ enum SMSParser {
         return String(
             format: "%04d%02d%02d%02d%02d",
             parts.year ?? 0, parts.month ?? 0, parts.day ?? 0, parts.hour ?? 0, parts.minute ?? 0
+        )
+    }
+
+    /// A message that is not an operation. Never stored, only counted and shown in the paste preview.
+    private static func skipped(_ text: String, reason: SMSSkipReason, receivedAt: Date) -> ParsedSMS {
+        ParsedSMS(
+            format: "generic", kind: .ignored, direction: nil, amountMinor: nil, currency: nil,
+            merchantRaw: "", merchantKey: "", merchantDisplay: "", city: nil,
+            date: receivedAt, dateFromText: false, cardLast4: nil, balanceMinor: nil,
+            namesTwoNetworks: false, confidence: 0,
+            fingerprint: fingerprint(card: nil, direction: nil, amountMinor: nil, parsedDate: nil, balanceMinor: nil, text: text),
+            skipReason: reason
         )
     }
 

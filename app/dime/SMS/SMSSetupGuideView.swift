@@ -17,17 +17,20 @@ struct SMSSetupGuideView: View {
     @State private var sampleFailed = false
     @State private var showHelp = false
 
-    /// The words the "Message Contains" filter needs, exactly as the banks print them.
+    /// Sender names of the bank messages: Humo cards and Uzcard cards.
+    static let senders = ["HUMOCARD", "CARDINFO"]
+
+    /// The words the older "Message Contains" filter needs, exactly as the banks print them.
     static let triggerWords = ["HUMOCARD", "karta", "Miqdor"]
 
+    // The flow seen in Shortcuts on iOS 27.
     private static let steps: [LocalizedStringKey] = [
-        "Open the Shortcuts app, go to the Automation tab and tap +.",
-        "Choose Message.",
-        "Tap Message Contains and type one of the words below, exactly as written. Leave Sender empty.",
-        "Choose Run Immediately and turn off Notify When Run. Tap Next.",
-        "Tap New Blank Automation, then Add Action. Search for this app and pick Add Bank SMS.",
-        "Tap the Message text field and choose Shortcut Input. Tap Done.",
-        "Repeat for the next word: one automation per word.",
+        "Open the Shortcuts app and tap + to make a new shortcut.",
+        "In the action search open the Automation category and choose the Message trigger.",
+        "Tap Sender is and type HUMOCARD, then add CARDINFO as a second sender. Type them as text, they are not in your contacts.",
+        "Add the action Add Bank SMS from Dime+.",
+        "In its Message text field choose the message content (Shortcut Input).",
+        "Set it to run immediately without asking and turn off the notification when it runs. Tap Done.",
     ]
 
     init() {}
@@ -124,15 +127,15 @@ struct SMSSetupGuideView: View {
 
     private var words: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SMSGroupTitle(title: "Words for Message Contains", count: 0)
+            SMSGroupTitle(title: "Senders", count: 0)
 
-            Text("HUMOCARD is for Humo cards. karta and Miqdor are for Uzcard, one of the two is enough. Tap a word to copy it.")
+            Text("HUMOCARD sends the Humo messages, CARDINFO the Uzcard ones. Tap a name to copy it.")
                 .font(.system(.caption, design: .rounded).weight(.medium))
                 .foregroundColor(Color.SubtitleText)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
-                ForEach(Self.triggerWords, id: \.self) { word in
+                ForEach(Self.senders, id: \.self) { word in
                     Button {
                         SMSClipboard.shared.copy(word)
                         ToastCenter.shared.success(String(localized: "Copied \(word)"))
@@ -156,6 +159,13 @@ struct SMSSetupGuideView: View {
                     .accessibilityLabel(Text("Copy \(word)"))
                 }
             }
+
+            // Older iOS has no sender filter in the message automation.
+            Text("No Sender is on an older iOS? Use Message Contains with one of these words instead, one automation per word: \(Self.triggerWords.joined(separator: ", ")).")
+                .font(.system(.caption, design: .rounded).weight(.medium))
+                .foregroundColor(Color.SubtitleText)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
         }
         .padding(.top, 4)
     }
@@ -231,7 +241,7 @@ struct SMSSetupGuideView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     helpLine("Check that the automation is switched on in Shortcuts.")
                     helpLine("After a restart the phone has to be unlocked once before automations run.")
-                    helpLine("Type the word exactly as shown, with the same capital letters.")
+                    helpLine("Type the sender exactly as shown, in capital letters.")
                     helpLine("Run Immediately needs iOS 17 or later.")
                     helpLine("A message that was missed can always be pasted by hand. The same message is never added twice.")
                 }

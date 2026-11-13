@@ -110,6 +110,7 @@ struct SMSInboxView: View {
         }
         .onAppear {
             inbox.reloadIfNeeded()
+            ingestor.refreshPending()
             clipboard.check()
         }
     }
@@ -167,7 +168,16 @@ struct SMSInboxView: View {
         }
 
         let suggestions = pending.filter { $0.group == .suggestions }
-        let transfers = pending.filter { $0.group == .transfers }
+        let allTransfers = pending.filter { $0.group == .transfers }
+        let pendingIDs = Set(pending.map { $0.id })
+        // A paired transfer is one card: the outgoing half shows it while both halves wait.
+        let transfers = allTransfers.filter { item in
+            guard let partnerID = item.pair?.partnerID, pendingIDs.contains(partnerID) else {
+                return true
+            }
+
+            return !item.isIncome
+        }
         let unrecognised = pending.filter { $0.group == .unrecognised }
         let matched = suggestions.filter { isMatched($0, byID) }
 
@@ -195,7 +205,7 @@ struct SMSInboxView: View {
                     groupHeader("Transfers and cash", count: transfers.count) {
                         if transfers.count > 1 {
                             groupButton(String(localized: "Skip all")) {
-                                skip(transfers)
+                                skip(allTransfers)
                             }
                         }
                     }
@@ -266,11 +276,20 @@ struct SMSInboxView: View {
         let category = suggestion.suggestedCategoryID.flatMap { byID[$0] }
         let ruleAutoAdd = ruleStore.rule(withID: suggestion.matchedRuleID)?.autoAdd ?? false
 
+        var title = SMSFormat.title(suggestion.parsed)
+        var subtitle = SMSFormat.subtitle(suggestion.parsed, cards: cardStore)
+
+        if let pair = suggestion.pair {
+            title = SMSFormat.pairTitle(pair, cards: cardStore)
+            subtitle = SMSFormat.pairSubtitle(pair, date: suggestion.parsed.date)
+        }
+
         return SMSSuggestionCard(
             suggestion: suggestion,
             category: category,
             categories: categories.filter { $0.income == suggestion.isIncome },
-            subtitle: SMSFormat.subtitle(suggestion.parsed, cards: cardStore),
+            title: title,
+            subtitle: subtitle,
             autoAdd: autoAddChoice[suggestion.id] ?? ruleAutoAdd,
             expanded: expandedID == suggestion.id,
             canEdit: editScreen != nil
@@ -388,7 +407,15 @@ struct SMSInboxView: View {
             confirm(suggestion, category)
 
         case .skip:
-            skip([suggestion])
+            // A paired transfer leaves with its other half.
+            skip(ingestor.withPartner(suggestion))
+
+        case .logFee:
+            Haptics.tap()
+
+            if let request = ingestor.feeDraftRequest(for: suggestion) {
+                editing = request
+            }
 
         case .edit:
             Haptics.tap()
@@ -552,12 +579,14 @@ enum SMSCardAction {
     case setOwnTransfer(Bool)
     case alwaysSkip
     case copy
+    case logFee
 }
 
 struct SMSSuggestionCard: View {
     let suggestion: SMSSuggestion
     let category: SMSCategoryInfo?
     let categories: [SMSCategoryInfo]
+    let title: String
     let subtitle: String
     let autoAdd: Bool
     let expanded: Bool
@@ -573,12 +602,13 @@ struct SMSSuggestionCard: View {
     @State private var showsOriginal = false
 
     init(
-        suggestion: SMSSuggestion, category: SMSCategoryInfo?, categories: [SMSCategoryInfo], subtitle: String,
+        suggestion: SMSSuggestion, category: SMSCategoryInfo?, categories: [SMSCategoryInfo], title: String, subtitle: String,
         autoAdd: Bool, expanded: Bool, canEdit: Bool, onAction: @escaping (SMSCardAction) -> Void
     ) {
         self.suggestion = suggestion
         self.category = category
         self.categories = categories
+        self.title = title
         self.subtitle = subtitle
         self.autoAdd = autoAdd
         self.expanded = expanded
@@ -605,6 +635,20 @@ struct SMSSuggestionCard: View {
 
     private var isDuplicate: Bool {
         suggestion.has(.possibleDuplicate)
+    }
+
+    private var pair: SMSTransferPair? {
+        suggestion.pair
+    }
+
+    /// Money came or went by a card to card transfer that is not known to be between own cards.
+    private var isLooseTransfer: Bool {
+        parsed.kind == .transfer && !suggestion.isOwnTransfer
+    }
+
+    /// Right swipe adds. A paired transfer has nothing to add and an unrecognised message no amount.
+    private var swipesRight: Bool {
+        group != .unrecognised && pair == nil
     }
 
     private var canLearn: Bool {
@@ -638,6 +682,11 @@ struct SMSSuggestionCard: View {
 
         if suggestion.has(.lowConfidence) || (parsed.direction == nil && parsed.amountMinor != nil) {
             result.append(TagInfo(id: "check", text: "Check the details"))
+        }
+
+        // The receive time stands in for the operation time: say so instead of hiding it.
+        if !parsed.dateFromText, parsed.amountMinor != nil {
+            result.append(TagInfo(id: "nodate", text: "No date in the message", icon: "clock"))
         }
 
         if suggestion.categorySource == "history", category != nil {
@@ -703,15 +752,18 @@ struct SMSSuggestionCard: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(group == .unrecognised ? String(localized: "Unrecognised message") : SMSFormat.title(parsed))
+                Text(group == .unrecognised ? String(localized: "Unrecognised message") : title)
                     .font(.system(.body, design: .rounded).weight(.medium))
                     .foregroundColor(Color.PrimaryText)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
+                // Two lines: "Humo *4417," and the date wrap instead of cutting the time off.
                 Text(group == .unrecognised ? SMSFormat.dateText(suggestion.receivedAt) : subtitle)
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
                     .foregroundColor(Color.SubtitleText)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 8)
@@ -726,7 +778,10 @@ struct SMSSuggestionCard: View {
 
     @ViewBuilder
     private var amount: some View {
-        if SMSFormat.isForeign(parsed) || parsed.direction == nil {
+        if let pair = pair, !SMSFormat.isForeign(parsed) {
+            // A move between own cards is neither spending nor income: no sign, neutral colour.
+            AmountText(SMSIngestor.amount(minor: pair.outMinor), role: .row, sign: .never, fit: .fullOnly, color: Color.PrimaryText)
+        } else if SMSFormat.isForeign(parsed) || parsed.direction == nil {
             // Not the app currency, or the direction is unknown: plain text, no app symbol or sign.
             Text(SMSFormat.amountText(parsed))
                 .font(.system(.title3, design: .rounded).weight(.medium))
@@ -863,11 +918,36 @@ struct SMSSuggestionCard: View {
             .textSelection(.enabled)
     }
 
+    /// Buttons in one row when they fit, else stacked full width: a label is never cut.
+    private func actionRow<Icons: View, Pills: View>(
+        @ViewBuilder icons: () -> Icons, @ViewBuilder pills: (Bool) -> Pills
+    ) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                icons()
+
+                Spacer(minLength: 0)
+
+                pills(false)
+            }
+
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    icons()
+
+                    Spacer(minLength: 0)
+                }
+
+                pills(true)
+            }
+        }
+    }
+
     @ViewBuilder
     private var actions: some View {
         switch group {
         case .suggestions:
-            HStack(spacing: 8) {
+            actionRow {
                 if !isDuplicate {
                     SMSIconButton(systemName: "xmark", label: "Skip") {
                         onAction(.skip)
@@ -879,21 +959,31 @@ struct SMSSuggestionCard: View {
                         onAction(.edit)
                     }
                 }
-
-                Spacer(minLength: 0)
-
+            } pills: { stacked in
                 if isDuplicate {
-                    SMSPillButton(title: String(localized: "Add anyway"), prominent: false) {
+                    SMSPillButton(title: String(localized: "Add"), systemImage: "plus", prominent: false, fills: stacked) {
                         onAction(.confirm)
                     }
 
-                    SMSPillButton(title: String(localized: "Already logged"), systemImage: "checkmark") {
+                    SMSPillButton(title: String(localized: "Already there"), systemImage: "checkmark", fills: stacked) {
                         onAction(.alreadyLogged)
+                    }
+                } else if isLooseTransfer {
+                    // Could be the owner's other card or another person: nothing is added by default.
+                    if parsed.direction != nil {
+                        SMSPillButton(title: String(localized: "My transfer"), systemImage: "arrow.left.arrow.right", prominent: false, fills: stacked) {
+                            onAction(.setOwnTransfer(true))
+                        }
+                    }
+
+                    SMSPillButton(title: logTitle, systemImage: logIcon, prominent: false, fills: stacked) {
+                        onAction(.confirm)
                     }
                 } else {
                     SMSPillButton(
                         title: mainTitle,
-                        systemImage: typesAmountByHand || category == nil ? nil : "checkmark"
+                        systemImage: typesAmountByHand || category == nil ? nil : "checkmark",
+                        fills: stacked
                     ) {
                         onAction(.confirm)
                     }
@@ -901,39 +991,43 @@ struct SMSSuggestionCard: View {
             }
 
         case .transfers:
-            HStack(spacing: 8) {
-                if canEdit {
+            actionRow {
+                if canEdit, pair == nil {
                     SMSIconButton(systemName: "pencil", label: "Edit") {
                         onAction(.edit)
                     }
                 }
-
-                Spacer(minLength: 0)
-
-                SMSPillButton(title: logTitle, prominent: false) {
-                    onAction(.confirm)
+            } pills: { stacked in
+                if let pair = pair {
+                    if pair.feeMinor > 0, canEdit {
+                        SMSPillButton(title: String(localized: "Log the fee"), systemImage: "plus", prominent: false, fills: stacked) {
+                            onAction(.logFee)
+                        }
+                    }
+                } else {
+                    SMSPillButton(title: logTitle, systemImage: logIcon, prominent: false, fills: stacked) {
+                        onAction(.confirm)
+                    }
                 }
 
-                SMSPillButton(title: String(localized: "Skip"), systemImage: "xmark") {
+                SMSPillButton(title: String(localized: "Skip"), systemImage: "xmark", fills: stacked) {
                     onAction(.skip)
                 }
             }
 
         case .unrecognised:
-            HStack(spacing: 8) {
+            actionRow {
                 SMSIconButton(systemName: "doc.on.doc", label: "Copy text") {
                     onAction(.copy)
                 }
-
-                Spacer(minLength: 0)
-
+            } pills: { stacked in
                 if canEdit {
-                    SMSPillButton(title: String(localized: "Add manually"), prominent: false) {
+                    SMSPillButton(title: String(localized: "Add manually"), prominent: false, fills: stacked) {
                         onAction(.edit)
                     }
                 }
 
-                SMSPillButton(title: String(localized: "Dismiss"), systemImage: "xmark") {
+                SMSPillButton(title: String(localized: "Dismiss"), systemImage: "xmark", fills: stacked) {
                     onAction(.skip)
                 }
             }
@@ -955,10 +1049,18 @@ struct SMSSuggestionCard: View {
 
     private var logTitle: String {
         if parsed.kind == .atmWithdrawal {
-            return String(localized: "Log as cash")
+            return String(localized: "As cash")
         }
 
-        return suggestion.isIncome ? String(localized: "Log as income") : String(localized: "Log as expense")
+        return suggestion.isIncome ? String(localized: "As income") : String(localized: "As expense")
+    }
+
+    private var logIcon: String {
+        if parsed.kind == .atmWithdrawal {
+            return "banknote"
+        }
+
+        return suggestion.isIncome ? "plus" : "minus"
     }
 
     // MARK: Swipe
@@ -999,7 +1101,7 @@ struct SMSSuggestionCard: View {
 
                 let width = value.translation.width
 
-                state = group == .unrecognised ? min(0, width) : width
+                state = swipesRight ? width : min(0, width)
             }
             .onChanged { value in
                 guard axis.isHorizontal(value) else {
@@ -1008,7 +1110,7 @@ struct SMSSuggestionCard: View {
 
                 var now = Self.side(of: value.translation.width)
 
-                if group == .unrecognised, now > 0 {
+                if !swipesRight, now > 0 {
                     now = 0
                 }
 
@@ -1032,7 +1134,7 @@ struct SMSSuggestionCard: View {
 
                 let side = Self.side(of: value.translation.width)
 
-                if side > 0, group != .unrecognised {
+                if side > 0, swipesRight {
                     onAction(isDuplicate ? .alreadyLogged : .confirm)
                 } else if side < 0 {
                     onAction(.skip)

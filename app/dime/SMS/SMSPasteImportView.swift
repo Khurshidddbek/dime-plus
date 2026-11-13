@@ -36,6 +36,14 @@ struct SMSPasteImportView: View {
         items.filter { $0.status == .known }.count
     }
 
+    private var skippedCount: Int {
+        items.filter { $0.status == .ignored && $0.parsed.skipReason != nil }.count
+    }
+
+    private var transferCount: Int {
+        items.filter { $0.ownTransfer }.count
+    }
+
     private var importable: Int {
         freshCount + unrecognisedCount
     }
@@ -155,6 +163,18 @@ struct SMSPasteImportView: View {
                     .foregroundColor(Color.SubtitleText)
             }
 
+            if transferCount > 0 {
+                Text("Between own cards, skipped by default: \(transferCount)")
+                    .font(.system(.footnote, design: .rounded).weight(.medium))
+                    .foregroundColor(Color.SubtitleText)
+            }
+
+            if skippedCount > 0 {
+                Text("Not operations, skipped: \(skippedCount)")
+                    .font(.system(.footnote, design: .rounded).weight(.medium))
+                    .foregroundColor(Color.SubtitleText)
+            }
+
             if unrecognisedCount > 0 {
                 Text("Unrecognised, saved for review: \(unrecognisedCount)")
                     .font(.system(.footnote, design: .rounded).weight(.medium))
@@ -169,7 +189,7 @@ struct SMSPasteImportView: View {
         let dimmed = item.status == .known || item.status == .ignored
 
         return HStack(spacing: 10) {
-            Image(systemName: icon(for: item.status))
+            Image(systemName: item.ownTransfer ? "arrow.left.arrow.right.circle.fill" : icon(for: item.status))
                 .font(.system(.footnote, design: .rounded).weight(.bold))
                 .foregroundColor(item.status == .fresh ? Color.IncomeGreen : Color.SubtitleText)
                 .frame(width: 22)
@@ -184,7 +204,8 @@ struct SMSPasteImportView: View {
                 Text(caption(for: item))
                     .font(.system(.caption, design: .rounded).weight(.medium))
                     .foregroundColor(Color.SubtitleText)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 8)
@@ -192,7 +213,7 @@ struct SMSPasteImportView: View {
             if item.parsed.amountMinor != nil, item.status != .ignored {
                 Text(SMSFormat.amountText(item.parsed))
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                    .foregroundColor(item.parsed.isIncome ? Color.IncomeGreen : Color.PrimaryText)
+                    .foregroundColor(item.parsed.isIncome && !item.ownTransfer ? Color.IncomeGreen : Color.PrimaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .layoutPriority(1)
@@ -226,11 +247,21 @@ struct SMSPasteImportView: View {
         case .unrecognised:
             return String(localized: "Unrecognised, will wait for review")
         case .ignored:
-            return String(localized: "Not a payment, ignored")
+            switch item.parsed.skipReason {
+            case .some(.declined):
+                return String(localized: "Declined, no money moved. Skipped")
+            case .some(.code):
+                return String(localized: "Code or password. Skipped")
+            default:
+                return String(localized: "Not a payment, ignored")
+            }
         case .known:
             return String(localized: "Already in the app")
         case .fresh:
-            return SMSFormat.subtitle(item.parsed, cards: SMSCardStore.shared)
+            let line = SMSFormat.subtitle(item.parsed, cards: SMSCardStore.shared)
+
+            // Both halves go to Transfers and are skipped unless logged by hand.
+            return item.ownTransfer ? String(localized: "Between own cards") + ", " + line : line
         }
     }
 
