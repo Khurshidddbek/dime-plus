@@ -86,10 +86,10 @@ enum InsightsFormat {
         return String(Int((share * 100).rounded())) + "%"
     }
 
+    // Callers switch to a money difference past 500%, so no ">999%" cap is needed here.
     static func changePercent(_ fraction: Double) -> String {
         guard fraction.isFinite else { return "" }
         let value = abs(fraction) * 100
-        if value > 999 { return ">999%" }
         return String(Int(value.rounded())) + "%"
     }
 

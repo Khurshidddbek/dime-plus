@@ -123,16 +123,8 @@ struct InsightsView: View {
                             }
                         }
                         .padding(.horizontal, 30)
-                        // Period swipe lives on the card only: a horizontal drag on the chart inspects days.
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 30).onEnded { value in
-                                let horizontal = value.translation.width
-                                guard abs(horizontal) > 70, abs(horizontal) > abs(value.translation.height) * 2 else { return }
-                                withAnimation(spring) {
-                                    model.step(horizontal > 0 ? -1 : 1)
-                                }
-                            }
-                        )
+                        // No swipe-to-change-period here: any drag recognizer in this ScrollView
+                        // blocked page scrolling on device. The arrows above change the period.
 
                         if model.page.periodIsEmpty {
                             InsightsEmptyPeriodView()

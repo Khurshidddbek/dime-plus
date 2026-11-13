@@ -48,7 +48,7 @@ struct InsightsCategoryRow: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
-            .background(isSelected ? Color.TertiaryBackground : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(isSelected ? Color.SecondaryBackground : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay {
                 if isSelected {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -73,8 +73,9 @@ struct InsightsProportionBar: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
+                // Outline, not SecondaryBackground: a selected row already sits on SecondaryBackground.
                 Capsule()
-                    .fill(Color.SecondaryBackground)
+                    .fill(Color.Outline)
 
                 Capsule()
                     .fill(colour)
@@ -179,7 +180,7 @@ struct InsightsNoteRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-        .background(isSelected ? Color.TertiaryBackground : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(isSelected ? Color.SecondaryBackground : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
             if isSelected {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)

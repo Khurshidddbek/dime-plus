@@ -191,7 +191,7 @@ struct InsightsCategoryDetailView: View {
             .padding(.top, 4)
         }
         .padding(16)
-        .background(Color.TertiaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var shareText: LocalizedStringKey {

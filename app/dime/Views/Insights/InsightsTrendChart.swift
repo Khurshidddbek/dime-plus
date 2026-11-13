@@ -5,8 +5,9 @@
 
 import SwiftUI
 
-// Bars per day (week, month) or per month (year). Tap or drag across it to inspect a bar:
-// the whole column is the target, so thin month bars need no aiming.
+// Bars per day (week, month) or per month (year). Tap to inspect a bar: the whole column is
+// the target, so thin month bars need no aiming. No drag scrubbing: a drag recognizer inside
+// the page ScrollView stopped the page from scrolling on device.
 struct InsightsTrendChart: View {
     let data: InsightsChartData
     let selected: Int?
@@ -15,9 +16,6 @@ struct InsightsTrendChart: View {
     let averageTitle: LocalizedStringKey
     let onSelect: (Int?) -> Void
     let onToggleScale: () -> Void
-
-    @State private var scrubbing = false
-    @State private var rejected = false
 
     private let plotHeight: CGFloat = 150
     private let axisWidth: CGFloat = 42
@@ -88,17 +86,6 @@ struct InsightsTrendChart: View {
                 SpatialTapGesture().onEnded { value in
                     tap(at: value.location.x, slot: slot)
                 }
-            )
-            // Simultaneous, so the page keeps scrolling when the finger moves vertically.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 10)
-                    .onChanged { value in
-                        scrub(value, slot: slot)
-                    }
-                    .onEnded { _ in
-                        scrubbing = false
-                        rejected = false
-                    }
             )
         }
         .frame(height: plotHeight)
@@ -263,21 +250,5 @@ struct InsightsTrendChart: View {
         guard let index = barIndex(at: x, slot: slot) else { return }
         Haptics.selection()
         onSelect(index == selected ? nil : index)
-    }
-
-    private func scrub(_ value: DragGesture.Value, slot: CGFloat) {
-        if rejected { return }
-        if !scrubbing {
-            // A mostly vertical drag belongs to the page scroll for the rest of the gesture.
-            guard abs(value.translation.width) > abs(value.translation.height) else {
-                rejected = true
-                return
-            }
-            scrubbing = true
-        }
-
-        guard let index = barIndex(at: value.location.x, slot: slot), index != selected else { return }
-        Haptics.selection()
-        onSelect(index)
     }
 }

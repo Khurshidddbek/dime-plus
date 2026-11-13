@@ -180,7 +180,7 @@ final class InsightsModel: ObservableObject {
         rebuild()
     }
 
-    // No haptic here: the chart plays one per bar while scrubbing.
+    // No haptic here: the chart plays it on tap.
     func selectBucket(_ index: Int?) {
         guard index != selectedBucket else { return }
         selectedBucket = index

@@ -46,7 +46,7 @@ struct InsightsSummaryBlockView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-            .background(Color.TertiaryBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay {
                 if showOverlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)

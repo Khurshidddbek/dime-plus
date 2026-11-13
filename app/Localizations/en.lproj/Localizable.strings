@@ -869,3 +869,10 @@
 "Custom notification time" = "Custom notification time";
 "Expense successfully logged." = "Expense successfully logged.";
 "Income successfully logged." = "Income successfully logged.";
+
+/* insights fix round */
+"Daily average" = "Daily average";
+"Monthly average" = "Monthly average";
+"Average transaction" = "Average transaction";
+"Transactions count" = "Transactions";
+"Largest transaction" = "Largest transaction";

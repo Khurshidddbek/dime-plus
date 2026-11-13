@@ -872,3 +872,10 @@
 "Custom notification time" = "Свое время напоминания";
 "Expense successfully logged." = "Расход записан.";
 "Income successfully logged." = "Доход записан.";
+
+/* insights fix round */
+"Daily average" = "В среднем в день";
+"Monthly average" = "В среднем в месяц";
+"Average transaction" = "Средняя операция";
+"Transactions count" = "Операций";
+"Largest transaction" = "Самая крупная операция";

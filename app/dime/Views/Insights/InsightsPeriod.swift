@@ -25,7 +25,8 @@ struct InsightsRules: Equatable {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale.current
         let weekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
-        calendar.firstWeekday = (1 ... 7).contains(weekday) ? weekday : 1
+        // Unset or invalid: follow the device region (Monday in ru / uz), like the system calendar.
+        calendar.firstWeekday = (1 ... 7).contains(weekday) ? weekday : Calendar.current.firstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         let day = UserDefaults.appGroup.integer(forKey: "firstDayOfMonth")
