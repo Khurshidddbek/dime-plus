@@ -86,7 +86,7 @@
 // log view
 "Your Log is Empty" = "Ваш лог пуст";
 "Press the plus button to add your first entry" = "Нажмите на + чтобы добавить Вашу первую запись";
-"Search entry by note" = "Поиск записи по Примечанию";
+"Search entry by note" = "Поиск по заметке";
 "all entries" = "все записи";
 "by type" = "по типу";
 "by day" = "по дням";
@@ -145,7 +145,7 @@
 "category budget" = "Бюджет по категории";
 "overall budget" = "Общий бюджет";
 "new" = "Добавить";
-"New Budget" = "Новый Бюджет";
+"New Budget" = "Новый бюджет";
 "Overall Budget" = "Общий бюджет";
 "Select a category" = "Выберите категорию";
 "Begin by linking this budget to an existing category." = "Начните с привязки этого бюджета к существующей категории.";
@@ -205,19 +205,19 @@
 "Start of Week" = "Начало недели";
 "Notifications" = "Уведомления";
 "Currency" = "Валюта";
-"Number Entry" = "Ввод Суммы";
+"Number Entry" = "Ввод суммы";
 "Authentication" = "Аутентификация";
-"Income Tracking" = "Учет Доходов";
-"Display Cents" = "Показывать Дроби";
+"Income Tracking" = "Учет доходов";
+"Display Cents" = "Показывать копейки";
 "iCloud Sync" = "Синхронизация с iCloud";
-"Export Data" = "Экспорт Данных";
-"Erase Data" = "Удалить Данные";
-"Animated Charts" = "Анимированые Графики";
+"Export Data" = "Экспорт данных";
+"Erase Data" = "Удалить данные";
+"Animated Charts" = "Анимированные графики";
 "Feature Lab" = "Лаборатория";
-"Tip Jar" = "Баночка для Чаевых";
-"Report Bug" = "Сообщить об Ошибке";
+"Tip Jar" = "Баночка для чаевых";
+"Report Bug" = "Сообщить об ошибке";
 "Rate on App Store" = "Оценить в App Store";
-"Share with Friends" = "Поделиться с Друзьями";
+"Share with Friends" = "Поделиться с друзьями";
 "Follow Dime on Twitter" = "Dime в Twitter";
 "Follow Rafael on Instagram" = "Рафаэль в Instagram";
 "Light" = "Светлая";
@@ -231,28 +231,28 @@
 "Type 1" = "Тип 1";
 "Type 2" = "Тип 2";
 "Close and reload app for change to take effect." = "Перезапустите приложение для применения эффекта.";
-"Enable Notifications" = "Включить Уведомления";
+"Enable Notifications" = "Включить уведомления";
 "Every morning (8:00 AM)" = "Каждое утро (8:00 AM)";
 "Every evening (8:00 PM)" = "Каждый вечер (8:00 PM)";
 "Custom Time" = "Свое время";
 "Currencies" = "Валюты";
-"Number Entry Method" = "Метод Ввода Суммы";
+"Number Entry Method" = "Способ ввода суммы";
 "\"Pre-dotted\"" = "Предварительно дробное";
 "If you're too lazy to add a decimal point, I gotchu covered." = "Ввод суммы начинается с дроби.";
 "\"Cent-less\"" = "Без дробей";
 "If your transactions usually amount to whole numbers - this one is for you." = "Удобнее для ввода целых чисел.";
-"Enable Sync" = "Включить Синхронизацию";
-"Permanently Delete Everythin'" = "Навсегда Удалить Все";
+"Enable Sync" = "Включить синхронизацию";
+"Permanently Delete Everythin'" = "Удалить все навсегда";
 "This action would delete all existing transactions, categories, and budgets, and cannot be undone." = "Это действие приведет к удалению всех существующих транзакций, категорий и бюджетов и не может быть отменено.";
 "Danger Zone" = "Внимание";
 "This action genuinely cannot be undone. Long press to confirm." = "Это действие действительно нельзя отменить. Удерживайте для подтверждения.";
-"Delete Literally Everything" = "Удалить Буквально Все";
+"Delete Literally Everything" = "Удалить вообще все";
 "Back Out" = "Отменить";
-"Celebrate Expenses" = "Праздновать Расходы";
+"Celebrate Expenses" = "Праздновать расходы";
 "Show Line Graph" = "График на главной";
-"Budget Rows" = "Бюджеты в Ряд";
+"Budget Rows" = "Бюджеты в ряд";
 "Experimental features - proceed with caution." = "Экспериментальные функции - применять с осторожностью.";
-"Replace Time Label" = "Заменить Время";
+"Replace Time Label" = "Категория вместо времени";
 "Swaps the time label of each transaction with its category name. However, if you do not manually input a note for each transaction - in which case the note is the category name by default - duplicate text will appear." = "Заменяет время транзакции на главном экране названием категории. Однако, если вы не вводите примечание для каждой операции, появится повторяющийся текст - по умолчанию примечанием является название категории.";
 "Keep the streak going!" = "Продолжайте серию!";
 "Remember to input your expenses today." = "Не забудьте ввести свои расходы сегодня.";
@@ -271,18 +271,18 @@
 // Widgets
 
 // Labels
-"Recent Transactions" = "Недавние Операции";
+"Recent Transactions" = "Недавние записи";
 "View your latest expenses." = "Просматривайте свои последние расходы.";
 "Analyse your expenditure breakdowns over various time periods." = "Анализируйте свои расходы за разные периоды времени.";
 "Monitor how you are sticking to your overall budgets." = "Следите за тем, как вы придерживаетесь своих общих бюджетов.";
 "Budget" = "Бюджет";
 "Monitor how you are sticking to your budgets." = "Следите за тем, как вы придерживаетесь своих бюджетов.";
-"New Expense" = "Новый Расход";
+"New Expense" = "Новый расход";
 "A convenient button to log new purchases." = "Удобная кнопка для записи новых покупок.";
 
 "%lld%% spent" = "%lld%% потрачено";
 "NO RECENT EXPENSES" = "Нет недавних расходов";
-"RECENT EXPENSES" = "Недавние Операции";
+"RECENT EXPENSES" = "Недавние записи";
 "in %@" = "за %@";
 "net" = "Сальдо";
 "earned" = "Заработано";
@@ -623,7 +623,7 @@
 "Hidden" = "Скрыты";
 "Time Frames" = "Периоды";
 "Start of Month" = "Начало месяца";
-"Import Data" = "Импорт Данных";
+"Import Data" = "Импорт данных";
 "Haptics" = "Отклик";
 "What's New" = "Что нового";
 "Display on Log Page" = "Показывать в журнале";
