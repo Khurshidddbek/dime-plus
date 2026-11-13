@@ -170,6 +170,17 @@ struct CategoryChipsRow: View {
                 }
             }
         }
+        .edgeToEdgeChips()
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+}
+
+extension View {
+    // The entry screen pads its content by 17 pt. A chip row breaks out of that padding so chips
+    // scroll to the physical screen edge, and the content margin keeps the first chip aligned at rest.
+    func edgeToEdgeChips(inset: CGFloat = 17) -> some View {
+        self
+            .contentMargins(.horizontal, inset, for: .scrollContent)
+            .padding(.horizontal, -inset)
     }
 }

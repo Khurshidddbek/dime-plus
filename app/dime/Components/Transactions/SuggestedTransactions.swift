@@ -39,6 +39,7 @@ struct NoteSuggestionChips: View {
                 }
             }
         }
+        .edgeToEdgeChips()
         .padding(.bottom, 5)
     }
 
