@@ -31,9 +31,11 @@ final class PersistenceStatus: ObservableObject {
     private let ringLimit = 100
 
     private init() {
-        isStoreLoaded = dataController.isStoreLoaded
-        storeLoadError = dataController.storeLoadError
-        saveFailure = dataController.lastSaveFailure
+        let controller = DataController.shared
+
+        isStoreLoaded = controller.isStoreLoaded
+        storeLoadError = controller.storeLoadError
+        saveFailure = controller.lastSaveFailure
     }
 
     /// Starts observing. Safe to call more than once.

@@ -232,7 +232,10 @@ final class BackupStore {
             throw BackupError.unreadable
         }
 
-        guard let document = try? JSONDecoder().decode(BackupDocument.self, from: data) else {
+        let decoder = JSONDecoder()
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+
+        guard let document = try? decoder.decode(BackupDocument.self, from: data) else {
             throw BackupError.unreadable
         }
 
@@ -397,6 +400,8 @@ final class BackupStore {
     private func write(_ document: BackupDocument) throws -> BackupInfo {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
+        // One broken amount (NaN) must not make every backup fail.
+        encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
         let data = try encoder.encode(document)
 
         let baseName = "dime-\(Self.fileStamp(document.meta.createdAt))-\(document.meta.tag)"
@@ -414,11 +419,12 @@ final class BackupStore {
         return BackupInfo(url: url, createdAt: document.meta.createdAt, tag: document.meta.tag, size: Int64(data.count))
     }
 
-    // Keeps the newest 14 automatic backups and, separately, the newest 14 of the others.
+    // Keeps the newest 14 of every kind, so manual exports cannot push out a safety copy.
+    // Files the app did not name itself (tag "file") are never removed.
     private func prune() {
-        let all = list()
+        let own = list().filter { $0.tag != "file" }
 
-        for group in [all.filter { $0.isAutomatic }, all.filter { !$0.isAutomatic }] {
+        for group in Dictionary(grouping: own, by: { $0.tag }).values {
             for old in group.dropFirst(Self.keepCount) {
                 try? FileManager.default.removeItem(at: old.url)
                 DiagnosticsLog.shared.log("backup", "pruned \(old.url.lastPathComponent)")

@@ -75,7 +75,7 @@ struct NewTransactionIntent: AppIntent {
                 throw $incomeCategory.needsValueError()
             }
         } else {
-            if amount == 0 {
+            if loggedAmount <= 0 {
                 throw $amount.needsValueError()
             }
 
@@ -123,11 +123,16 @@ struct NewTransactionIntent: AppIntent {
         }
     }
 
+    // Shortcuts can pass any Double: whole units for zero-decimal currencies, cents otherwise.
+    private var loggedAmount: Double {
+        MoneyFormat.round(amount, fractionDigits: MoneySettings.current.isZeroDecimal ? 0 : 2)
+    }
+
     // The dialog must not say "logged" unless the row really reached the store.
     @MainActor
     private func logTransaction(_ dataController: DataController, category: Category, income: Bool, repeatType: Int) throws -> Transaction {
         do {
-            let transaction = try dataController.newTransactionOrThrow(note: note ?? "", category: category, income: income, amount: amount, date: Date.now, repeatType: repeatType, repeatCoefficient: 1)
+            let transaction = try dataController.newTransactionOrThrow(note: note ?? "", category: category, income: income, amount: loggedAmount, date: Date.now, repeatType: repeatType, repeatCoefficient: 1)
             DiagnosticsLog.shared.log("intent", "new transaction saved")
             return transaction
         } catch {
@@ -217,20 +222,16 @@ struct ShortcutTransactionView: View {
 
     @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
 
-    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = Locale.current.currency?.identifier ?? "USD"
+    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
 
+    @AppStorage("currencySymbolOverride", store: UserDefaults.appGroup) var symbolOverride: String = ""
+
+    // Same style as the Log rows (grouping, zero-decimal currencies, symbol position, sign glyph).
     var transactionAmountString: String {
-        let numberFormatter = NumberFormatter()
-        numberFormatter.numberStyle = .currency
-        numberFormatter.currencyCode = currency
-
-        if showCents {
-            numberFormatter.maximumFractionDigits = 2
-        } else {
-            numberFormatter.maximumFractionDigits = 0
-        }
-
-        return numberFormatter.string(from: NSNumber(value: transaction.amount)) ?? "$0"
+        MoneyFormat.string(
+            transaction.amount, sign: transaction.income ? .plus : .minus,
+            settings: MoneySettings.resolve(currency: currency, showCents: showCents, symbolOverride: symbolOverride)
+        )
     }
 
     var body: some View {
@@ -262,14 +263,14 @@ struct ShortcutTransactionView: View {
             }
             Spacer()
             if transaction.income {
-                Text("+\(transactionAmountString)")
+                Text(transactionAmountString)
                     .font(.system(size: 19, weight: .medium, design: .rounded))
                     .foregroundColor(Color.IncomeGreen)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
                     .layoutPriority(1)
             } else {
-                Text("-\(transactionAmountString)")
+                Text(transactionAmountString)
                     .font(.system(size: 19, weight: .medium, design: .rounded))
                     .foregroundColor(Color.PrimaryText)
                     .minimumScaleFactor(0.7)

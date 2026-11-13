@@ -125,10 +125,11 @@ final class TrashStore: ObservableObject {
 
         DiagnosticsLog.shared.log("trash", "deleted a category with \(trashed.count) transaction(s)")
 
-        try dataController.saveOrThrow("delete category")
-
         // Cascade-deleted rows must not be reported as missing by the integrity check.
+        // Before the save: when it fails, the delete still goes out with a later save.
         PersistenceStatus.shared.noteDeleted(trashed.map { $0.id })
+
+        try dataController.saveOrThrow("delete category")
 
         return groupID
     }
@@ -331,7 +332,9 @@ final class TrashStore: ObservableObject {
         }
 
         do {
-            let contents = try JSONDecoder().decode(FileContents.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+            let contents = try decoder.decode(FileContents.self, from: data)
             items = contents.items
             categories = contents.categories
         } catch {
@@ -345,7 +348,10 @@ final class TrashStore: ObservableObject {
 
     private func persist() {
         do {
-            let data = try JSONEncoder().encode(FileContents(items: items, categories: categories))
+            let encoder = JSONEncoder()
+            // A NaN amount must not stop the copy from reaching the disk before the delete.
+            encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
+            let data = try encoder.encode(FileContents(items: items, categories: categories))
             try data.write(to: fileURL, options: .atomic)
         } catch {
             DiagnosticsLog.shared.log("trash", "write FAILED \(error.localizedDescription)")

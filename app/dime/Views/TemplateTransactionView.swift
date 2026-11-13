@@ -99,8 +99,6 @@ struct TemplateTransactionView: View {
     @State var toastTitle = ""
     @State var toastImage = ""
 
-    @ObservedObject var keyboardHeightHelper = KeyboardHeightHelper()
-
     @AppStorage("firstTransactionViewLaunch", store: UserDefaults.appGroup) var firstLaunch: Bool = true
 
     // edit mode
@@ -655,30 +653,28 @@ struct TemplateTransactionView: View {
     }
 
     func submit() {
-        let generator = UINotificationFeedbackGenerator()
-
         if transactionValue == 0 && category == nil {
             toastImage = "questionmark.app"
             toastTitle = "Incomplete Entry"
             showToast = true
-            generator.notificationOccurred(.error)
+            Haptics.error()
 
             return
         } else if transactionValue == 0 {
             toastImage = "centsign.circle"
             toastTitle = "Missing Amount"
             showToast = true
-            generator.notificationOccurred(.error)
+            Haptics.error()
             return
         } else if category == nil {
             toastImage = "tray"
             toastTitle = "Missing Category"
             showToast = true
-            generator.notificationOccurred(.error)
+            Haptics.error()
             return
         }
 
-        generator.notificationOccurred(.success)
+        Haptics.success()
 
         if let editedTransaction = toEdit {
             if note.trimmingCharacters(in: .whitespacesAndNewlines) == "" {

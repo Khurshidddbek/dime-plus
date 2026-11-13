@@ -80,6 +80,7 @@ struct TransactionView: View {
     @State private var categoryPulse = false
 
     @State private var isSubmitting = false
+    @State private var editSaveFailed = false
     @State private var finishReported = false
 
     @StateObject private var suggestions = NoteSuggestionIndex()
@@ -106,13 +107,13 @@ struct TransactionView: View {
 
     var repeatButtonAccessibility: String {
         if repeatType == 1 {
-            return "transaction recurs daily, button to edit recurring duration"
+            return String(localized: "transaction recurs daily, button to edit recurring duration")
         } else if repeatType == 2 {
-            return "transaction recurs weekly, button to edit recurring duration"
+            return String(localized: "transaction recurs weekly, button to edit recurring duration")
         } else if repeatType == 3 {
-            return "transaction recurs monthly, button to edit recurring duration"
+            return String(localized: "transaction recurs monthly, button to edit recurring duration")
         } else {
-            return "button to make transaction recurring"
+            return String(localized: "button to make transaction recurring")
         }
     }
 
@@ -287,6 +288,7 @@ struct TransactionView: View {
         }
         .confirmationDialog(discardTitle, isPresented: $showDiscardDialog, titleVisibility: .visible) {
             Button("Discard", role: .destructive) {
+                revertFailedEdit()
                 report(saved: false, id: nil)
                 dismiss()
             }
@@ -521,9 +523,10 @@ struct TransactionView: View {
                 Group {
                     if isFutureDate {
                         Image(systemName: "rays")
+                            // Indefinite form: a value trigger would never change inside this branch.
                             .symbolEffect(
                                 .variableColor.iterative.dimInactiveLayers.nonReversing,
-                                options: .repeating, value: isFutureDate)
+                                options: .repeating)
                     } else {
                         Image(systemName: "calendar")
                     }
@@ -1002,8 +1005,30 @@ struct TransactionView: View {
             return
         }
 
+        revertFailedEdit()
         report(saved: false, id: nil)
         dismiss()
+    }
+
+    /// A failed edit save leaves its changes in the context, so the next save anywhere would commit what the user discarded.
+    /// The old and new categories are refreshed too, so the inverse to-many relationship stays consistent.
+    private func revertFailedEdit() {
+        guard editSaveFailed, let edited = editTarget, let context = edited.managedObjectContext,
+              !edited.isDeleted, !edited.isInserted else { return }
+
+        editSaveFailed = false
+
+        let committed = edited.committedValues(forKeys: ["category"])["category"]
+        var oldCategory = committed as? Category
+        if oldCategory == nil, let objectID = committed as? NSManagedObjectID {
+            oldCategory = (try? context.existingObject(with: objectID)) as? Category
+        }
+        let newCategory = edited.category
+
+        context.refresh(edited, mergeChanges: false)
+        for category in [oldCategory, newCategory].compactMap({ $0 }) where !category.isInserted && !category.isDeleted {
+            context.refresh(category, mergeChanges: false)
+        }
     }
 
     private func deleteEdited() {
@@ -1121,16 +1146,24 @@ struct TransactionView: View {
     }
 
     private func saveEdit(_ edited: Transaction, category chosen: Category) {
-        guard edited.managedObjectContext != nil, !edited.isDeleted else {
+        guard let context = edited.managedObjectContext, !edited.isDeleted else {
             // The row went away under the screen (sync, another device).
             ToastCenter.shared.saveFailed()
             isSubmitting = false
             return
         }
 
+        let insertedBefore = context.insertedObjects
+
         let typedNote = cleanedNote
         // An empty note is still stored as the category name, the lists read the note as is.
-        edited.note = typedNote.isEmpty ? chosen.wrappedName : typedNote
+        if typedNote.isEmpty {
+            edited.note = chosen.wrappedName
+        } else if typedNote != baseline.note {
+            // An untouched note keeps its stored text: an imported one can be longer than the field shows.
+            edited.note = typedNote
+        }
+
         edited.category = chosen
         edited.income = income
 
@@ -1155,6 +1188,10 @@ struct TransactionView: View {
 
         // Everything above goes to disk in one save, before the screen closes.
         if dataController.save("edit transaction").isFailure {
+            // A second try would generate the recurring rows once more: drop them and keep the series on this row.
+            context.insertedObjects.subtracting(insertedBefore).forEach { context.delete($0) }
+            edited.recurringType = Int16(clamping: repeatType)
+            editSaveFailed = true
             isSubmitting = false
             return
         }
