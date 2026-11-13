@@ -9,49 +9,44 @@ import ConfettiSwiftUI
 import Foundation
 import SwiftUI
 
-class OverallToastPresenter: ObservableObject {
-    @Published var showToast: Bool = false
+/// A delete waiting for confirmation. A value copy: the card can keep its text
+/// while it slides away after the row is gone.
+struct LogPendingDelete: Equatable {
+    let row: LogRowModel
+    let future: Bool
+    let stopsRecurring: Bool
 }
 
-enum DeletionType {
-    case instant
-    case prompt
-}
+/// What the Log asks the root screen to present. Rows do not observe it (see LogActions),
+/// only the small hosts below do, so a tap on a row redraws nothing else.
+final class OverallTransactionManager: ObservableObject {
+    static let shared = OverallTransactionManager()
 
-class OverallTransactionManager: ObservableObject {
     @Published var toEdit: Transaction?
-    @Published var toDelete: Transaction?
-    @Published var showToast: Bool = false
+    /// Same as `toEdit` while search is open: the editor is presented from the search cover.
+    @Published var searchToEdit: Transaction?
+    /// Source row for "Duplicate": the editor opens prefilled, nothing is saved until confirmed.
+    @Published var toDuplicate: Transaction?
+    @Published var searchToDuplicate: Transaction?
+    @Published var pendingDelete: LogPendingDelete?
     @Published var showPopup: Bool = false
-    @Published var future: Bool = false
+
+    var searchActive = false
 }
 
 struct HomeView: View {
     @EnvironmentObject var appLockVM: AppLockViewModel
+    @EnvironmentObject var tabBarManager: TabBarManager
 
-    @StateObject var toastPresenter = OverallToastPresenter()
-    @StateObject var transactionManager = OverallTransactionManager()
-    @Environment(\.managedObjectContext) var moc
-    @EnvironmentObject var dataController: DataController
+    // Not observed here on purpose: publishing must not rebuild the whole tab view.
+    let transactionManager = OverallTransactionManager.shared
 
     @State var currentTab = "Log"
 
     var topEdge: CGFloat
     var bottomEdge: CGFloat
 
-    @State var fromURL1: Bool = false
-    @State var fromURL2: Bool = false
-    @State var fromURL3: Bool = false
-    @State var fromURL4: Bool = false
-
-    @State var launchAdd: Bool = false
-    @State var launchSearch: Bool = false
-
     @State var counter = 0
-
-    @EnvironmentObject var tabBarManager: TabBarManager
-
-    @State var showPopup = false
 
     // Hiding Native TabBar...
     init(topEdge: CGFloat, bottomEdge: CGFloat) {
@@ -63,7 +58,7 @@ struct HomeView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $currentTab) {
-                LogView(topEdge: topEdge, bottomEdge: bottomEdge, launchSearch: launchSearch)
+                LogView(topEdge: topEdge, bottomEdge: bottomEdge)
                     .ignoresSafeArea(.all)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .tag("Log")
@@ -80,95 +75,27 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .tag("Settings")
             }
-            .allowsHitTesting(showPopup ? false : true)
-            .environmentObject(toastPresenter)
-            .environmentObject(transactionManager)
 
-            CustomTabBar(currentTab: $currentTab, topEdge: topEdge, bottomEdge: bottomEdge, counter: $counter, launchAdd: launchAdd)
+            PersistenceNotices(currentTab: $currentTab)
+                .padding(.bottom, 70 + bottomEdge)
+                .offset(y: tabBarManager.hideTab ? (60 + bottomEdge) : 0)
+
+            CustomTabBar(currentTab: $currentTab, topEdge: topEdge, bottomEdge: bottomEdge, counter: $counter)
                 .offset(y: tabBarManager.hideTab ? (70 + bottomEdge) : 0)
 
-            if showPopup {
-                Rectangle()
-                    .fill(Color.clear)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        transactionManager.showPopup = false
-                    }
-            }
+            DeletePopupLayer()
 
-            DeleteTransactionAlert()
-                .offset(y: showPopup ? 0 : 300)
-                .environmentObject(transactionManager)
-
+            // The real cover is a window above sheets and covers (AppLockWindowController).
+            // This one hides the first frame and stays as a fallback if the window cannot be made.
             if appLockVM.isAppLockEnabled && !appLockVM.isAppUnLocked {
                 AppLockView()
                     .ignoresSafeArea(.all)
-                    .onOpenURL { url in
-
-                        if url.host == "newExpense" {
-                            fromURL1 = true
-                        } else if url.host == "search" {
-                            fromURL2 = true
-                        } else if url.host == "insights" {
-                            fromURL3 = true
-                        } else if url.host == "budget" {
-                            fromURL4 = true
-                        }
-                    }
             }
         }
-        .toast(isPresenting: $toastPresenter.showToast, duration: 4, tapToDismiss: true, offsetY: 12, alert: {
-            AlertToast(displayMode: .hud, type: .systemImage("checkmark.circle.fill", Color.IncomeGreen), title: "Image Saved", subTitle: "Check it out in Photos")
-        })
-        .toast(isPresenting: $transactionManager.showToast, duration: 4, tapToDismiss: true, offsetY: 12, alert: {
-            AlertToast(displayMode: .hud, type: .systemImage("arrow.uturn.backward.circle.fill", Color.AlertRed), title: "Log Deleted", subTitle: "Tap to Undo")
-        }, onTap: {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                moc.rollback()
-            }
-            transactionManager.toDelete = nil
-        }, completion: {
-            dataController.save()
-            transactionManager.toDelete = nil
-        })
-        .onChange(of: transactionManager.showPopup) { newValue in
-            withAnimation {
-                showPopup = newValue
-            }
-        }
-        .fullScreenCover(item: $transactionManager.toEdit, onDismiss: {
-            transactionManager.toEdit = nil
-        }) { transaction in
-            TransactionView(toEdit: transaction)
-        }
+        .background(TransactionCoverHost(inSearch: false))
         .confettiCannon(counter: $counter, num: 50, openingAngle: Angle(degrees: 0), closingAngle: Angle(degrees: 360), radius: 200)
         .onAppear {
-            if appLockVM.isAppLockEnabled && fromURL1 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    launchAdd.toggle()
-                }
-
-                fromURL1 = false
-            }
-
-            if appLockVM.isAppLockEnabled && fromURL2 {
-                currentTab = "Log"
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    launchSearch.toggle()
-                }
-
-                fromURL2 = false
-            }
-
-            if appLockVM.isAppLockEnabled && fromURL3 {
-                currentTab = "Insights"
-            }
-
-            if appLockVM.isAppLockEnabled && fromURL4 {
-                currentTab = "Budget"
-            }
+            AppLockWindowController.shared.attach(appLockVM)
         }
         .onOpenURL { url in
             if url.host == "search" {
@@ -179,6 +106,119 @@ struct HomeView: View {
                 currentTab = "Budget"
             }
         }
+        // Last, so the tab bar and the covers presented above also get it.
+        .environmentObject(transactionManager)
+    }
+}
+
+/// Presents the editor for the row picked in the Log. A view of its own, so only this
+/// zero-size host is redrawn when a row is tapped.
+struct TransactionCoverHost: View {
+    let inSearch: Bool
+
+    @ObservedObject var manager = OverallTransactionManager.shared
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .fullScreenCover(item: inSearch ? $manager.searchToEdit : $manager.toEdit) { transaction in
+                TransactionView(toEdit: transaction)
+            }
+            .background(
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .fullScreenCover(item: inSearch ? $manager.searchToDuplicate : $manager.toDuplicate) { transaction in
+                        TransactionView(duplicating: transaction)
+                    }
+            )
+    }
+}
+
+/// The confirmation card for a half swipe, with the layer that closes it on an outside tap.
+struct DeletePopupLayer: View {
+    @ObservedObject var manager = OverallTransactionManager.shared
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            if manager.showPopup {
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        LogActions.cancelPendingDelete()
+                    }
+                    .accessibilityHidden(true)
+            }
+
+            DeleteTransactionAlert()
+                .offset(y: manager.showPopup ? 0 : 400)
+        }
+    }
+}
+
+/// "Not saved" and "entries went missing" pills above the tab bar.
+struct PersistenceNotices: View {
+    @Binding var currentTab: String
+
+    @ObservedObject var persistence = PersistenceStatus.shared
+
+    var body: some View {
+        VStack(spacing: 8) {
+            if persistence.saveFailure != nil {
+                Button {
+                    if persistence.retrySave() {
+                        ToastCenter.shared.success(String(localized: "Saved"))
+                    }
+                } label: {
+                    pill(Text("Not saved - tap to retry"), icon: "exclamationmark.triangle.fill", tint: Color.AlertRed)
+                }
+                .buttonStyle(BouncyButton(duration: 0.2, scale: 0.95))
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+
+            if !persistence.missingTransactionIDs.isEmpty {
+                Button {
+                    Haptics.tap()
+                    currentTab = "Settings"
+                    persistence.clearMissing()
+                } label: {
+                    pill(
+                        Text("\(persistence.missingTransactionIDs.count) entries went missing. Check Backups in Settings."),
+                        icon: "questionmark.folder.fill",
+                        tint: Color.PrimaryText
+                    )
+                }
+                .buttonStyle(BouncyButton(duration: 0.2, scale: 0.95))
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
+        .padding(.horizontal, 20)
+        .animation(.easeInOut(duration: 0.2), value: persistence.saveFailure != nil)
+        .animation(.easeInOut(duration: 0.2), value: persistence.missingTransactionIDs.count)
+    }
+
+    func pill(_ text: Text, icon: String, tint: Color) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+
+        return HStack(spacing: 6.5) {
+            Image(systemName: icon)
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+
+            text
+                .font(.system(.body, design: .rounded).weight(.semibold))
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+        }
+        .foregroundColor(tint)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .frame(minHeight: 44)
+        .background(tint.opacity(0.23), in: shape)
+        .background(Color.PrimaryBackground, in: shape)
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 3)
+        .contentShape(shape)
     }
 }
 
@@ -190,21 +230,22 @@ struct AppLockView: View {
             Image(systemName: "lock.fill")
                 .font(.system(size: 65))
                 .foregroundColor(Color.DarkIcon.opacity(0.7))
+                .accessibilityHidden(true)
 
             Text("App Locked")
-                .font(.system(size: 28, weight: .semibold, design: .rounded))
+                .font(.system(.title, design: .rounded).weight(.semibold))
                 .foregroundColor(Color.PrimaryText)
                 .padding(.bottom, 30)
 
             Button {
-                appLockVM.appLockValidation()
+                AppLockWindowController.shared.authenticate()
             } label: {
                 HStack {
                     Image(systemName: "faceid")
 
                     Text("Unlock App")
                 }
-                .font(.system(size: 20, weight: .medium, design: .rounded))
+                .font(.system(.title3, design: .rounded).weight(.medium))
                 .foregroundColor(Color.PrimaryText)
                 .padding(.horizontal, 40)
                 .padding(.vertical, 15)
@@ -212,17 +253,19 @@ struct AppLockView: View {
                     RoundedRectangle(cornerRadius: 13)
                         .stroke(Color.Outline)
                 }
+                .contentShape(RoundedRectangle(cornerRadius: 13))
             }
 
             if appLockVM.enrollmentError {
-                Text("Please re-enable Face ID access in the Settings app to unlock application.")
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                Text("Turn on a passcode or Face ID in the Settings app to unlock.")
+                    .font(.system(.subheadline, design: .rounded).weight(.regular))
                     .foregroundColor(Color.SubtitleText)
                     .multilineTextAlignment(.center)
             }
         }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .padding(.horizontal, 30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.PrimaryBackground)
+        .background(Color.PrimaryBackground.ignoresSafeArea())
     }
 }

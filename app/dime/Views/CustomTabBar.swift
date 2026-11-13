@@ -15,14 +15,11 @@ struct CustomTabBar: View {
     var bottomEdge: CGFloat
     @State var addTransaction: Bool = false
 
-    @State var checkingFace: Bool = false
-
-    @FetchRequest(sortDescriptors: []) private var transactions: FetchedResults<Transaction>
+    // Count only: a fetch of every transaction lived here just to know whether the Log is empty.
+    @ObservedObject var stats = LogFeed.shared.stats
 
     @State var count = 0
     @Binding var counter: Int
-
-    var launchAdd: Bool
 
     @AppStorage("confetti", store: UserDefaults.appGroup) var confetti: Bool = false
     @AppStorage("firstTransactionViewLaunch", store: UserDefaults.appGroup) var firstLaunch: Bool = true
@@ -51,8 +48,7 @@ struct CustomTabBar: View {
                     .scaleEffect(self.animate ? 1 : 0.6)
 
                 Button {
-                    let impactMed = UIImpactFeedbackGenerator(style: .light)
-                    impactMed.impactOccurred()
+                    Haptics.tap()
 
                     addTransaction = true
 
@@ -60,10 +56,11 @@ struct CustomTabBar: View {
                     Image(systemName: "plus")
                 }
                 .buttonStyle(MyButtonStyle())
-                .padding(15)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 12)
             }
             .onAppear {
-                if transactions.isEmpty {
+                if stats.count == 0 {
                     withAnimation(.easeInOut(duration: 1.9).repeatForever(autoreverses: false)) {
                         self.animate.toggle()
                     }
@@ -81,7 +78,7 @@ struct CustomTabBar: View {
         .background(Color.PrimaryBackground)
         .fullScreenCover(isPresented: $addTransaction, onDismiss: {
             if confetti {
-                if count != transactions.count {
+                if count != stats.count {
                     counter += 1
                 }
             }
@@ -93,20 +90,13 @@ struct CustomTabBar: View {
         }, content: {
             TransactionView(toEdit: nil)
         })
-        .onChange(of: launchAdd) { _ in
-            addTransaction = true
-        }
-        .onChange(of: addTransaction) { _ in
-            if addTransaction {
-                count = transactions.count
+        .onChange(of: addTransaction) { _, presented in
+            if presented {
+                count = stats.count
             }
         }
-        .onChange(of: transactions.count) { _ in
-            if !transactions.isEmpty {
-                self.animate = false
-            } else {
-                self.animate = true
-            }
+        .onChange(of: stats.count) { _, newCount in
+            self.animate = newCount == 0
         }
         .onOpenURL { url in
             guard
@@ -128,6 +118,9 @@ struct MyButtonStyle: ButtonStyle {
             .foregroundColor(Color.LightIcon)
             .frame(width: 65, height: 38)
             .background(configuration.isPressed ? Color.SubtitleText : Color.DarkBackground, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            // 44 pt tap target around the 38 pt key.
+            .padding(.vertical, 3)
+            .contentShape(Rectangle())
     }
 }
 
