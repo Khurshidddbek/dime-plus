@@ -350,15 +350,7 @@ struct BackupRestoreCard: View {
             Button {
                 restore(.mergeMissing)
             } label: {
-                Text("Add what is missing")
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-                    .foregroundColor(Color.LightIcon)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .padding(.horizontal, 8)
-                    .frame(height: 45)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.DarkBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                RestoreCardButtonLabel(text: String(localized: "Add what is missing"), foreground: Color.LightIcon, background: Color.DarkBackground)
             }
             .padding(.bottom, 8)
 
@@ -373,7 +365,7 @@ struct BackupRestoreCard: View {
                     }
                 }
             } label: {
-                DeleteButton(text: confirmReplace ? String(localized: "Tap again to replace everything") : String(localized: "Replace everything"), red: true)
+                RestoreCardButtonLabel(text: confirmReplace ? String(localized: "Tap again to replace everything") : String(localized: "Replace everything"), foreground: Color.white, background: Color.AlertRed)
             }
             .padding(.bottom, confirmReplace ? 4 : 8)
 
@@ -411,7 +403,7 @@ struct BackupRestoreCard: View {
         Button {
             dismiss()
         } label: {
-            DeleteButton(text: String(localized: "Cancel"), red: false)
+            RestoreCardButtonLabel(text: String(localized: "Cancel"), foreground: Color.PrimaryText.opacity(0.9), background: Color.SecondaryBackground)
         }
     }
 
@@ -460,5 +452,28 @@ struct BackupRestoreCard: View {
 
             dismiss()
         }
+    }
+}
+
+/// Same look as DeleteButton, but a long Russian label wraps to a second line instead of being cut.
+private struct RestoreCardButtonLabel: View {
+    let text: String
+    let foreground: Color
+    let background: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(.title3, design: .rounded).weight(.semibold))
+            .foregroundColor(foreground)
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .minimumScaleFactor(0.85)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .frame(minHeight: 45)
+            .frame(maxWidth: .infinity)
+            .background(background, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .contentShape(Rectangle())
     }
 }

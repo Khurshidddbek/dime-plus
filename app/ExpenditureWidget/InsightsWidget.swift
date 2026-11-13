@@ -70,7 +70,7 @@ struct InsightsProvider: IntentTimelineProvider {
             // calendar initialization
             var calendar = Calendar(identifier: .gregorian)
 
-            calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+            calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
             calendar.minimumDaysInFirstWeek = 4
 
             var dictionary = [Date: Double]()

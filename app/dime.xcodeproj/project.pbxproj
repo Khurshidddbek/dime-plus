@@ -12,6 +12,7 @@
 		0C0E96A26205B404FE90EAF9 /* CategoryDeleteCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D9DEDCEA995A63A7DC9167 /* CategoryDeleteCard.swift */; };
 		18BAAECFE42C52902B979D39 /* MoneyFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC097DBD4EEDE89B56CE26A /* MoneyFormat.swift */; };
 		1A94BBF12447D0B2E83B2878 /* SMSPasteImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EBE47BE4E191A6321175F0 /* SMSPasteImportView.swift */; };
+		227EDB845D6BCE4EA32B25FC /* AppShortcuts.strings in Resources */ = {isa = PBXBuildFile; fileRef = 381CEA2FC2185AC8C4F7135A /* AppShortcuts.strings */; };
 		296CC5059577E3398D71A686 /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4817E6B7DCD0CABC791C8F /* AppIdentifiers.swift */; };
 		2A81BCAA93DE31ED3753E817 /* SMSCardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731DB11C2203E27E9CB5E82C /* SMSCardStore.swift */; };
 		2CFC334DC0F6E6370CC5688A /* DataController+BulkWrites.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF37569089821E5D3ED7B45 /* DataController+BulkWrites.swift */; };
@@ -454,6 +455,7 @@
 		AECE7F9D2AED1A6800B57267 /* SuggestedTransactions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestedTransactions.swift; sourceTree = "<group>"; };
 		B323B757E7A5FE7AB34803E1 /* StoreRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreRecords.swift; sourceTree = "<group>"; };
 		B452E4C37CADC1BF42E69EC5 /* CSVImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVImport.swift; sourceTree = "<group>"; };
+		B4A286A8397318838CC8D8FD /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = Localizations/ru.lproj/AppShortcuts.strings; sourceTree = "<group>"; };
 		B95372F78029ECF2D85FF9A0 /* InsightsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsRows.swift; sourceTree = "<group>"; };
 		BA5099FAD56150E4F0FA841E /* TrashStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashStore.swift; sourceTree = "<group>"; };
 		BDA0F77A88F788310DCF9D1A /* SMSInboxEntryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSInboxEntryCard.swift; sourceTree = "<group>"; };
@@ -465,6 +467,7 @@
 		D7655FEF4E6BA7C65D812159 /* Fmt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fmt.swift; sourceTree = "<group>"; };
 		DFE60629D3D4A274BD25867D /* SMSRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSRouter.swift; sourceTree = "<group>"; };
 		E499D085660F40F16D85BD56 /* InsightsTrendChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsTrendChart.swift; sourceTree = "<group>"; };
+		E7B490A0A8442A50586CE02F /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = Localizations/en.lproj/AppShortcuts.strings; sourceTree = "<group>"; };
 		EF3C7AF6F7AF89A9A92B646B /* InsightsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsData.swift; sourceTree = "<group>"; };
 		F154474C43A309297230E543 /* SMSIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSIntents.swift; sourceTree = "<group>"; };
 		F2ABB35B82684F067CF2608A /* InsightsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsModel.swift; sourceTree = "<group>"; };
@@ -556,6 +559,7 @@
 				5313EC6928ACE941000EAB0C /* BudgetIntentUI */,
 				5327D284287C697400F76ADF /* Products */,
 				5383D85C287D9A0100D1B9BA /* Frameworks */,
+				381CEA2FC2185AC8C4F7135A /* AppShortcuts.strings */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1062,6 +1066,7 @@
 				5327D295287C698900F76ADF /* Assets.xcassets in Resources */,
 				53756F632AC3C25E0065D0C2 /* sample.csv in Resources */,
 				5327D2E0287C6B7D00F76ADF /* DeviceModels.json in Resources */,
+				227EDB845D6BCE4EA32B25FC /* AppShortcuts.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1325,6 +1330,15 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		381CEA2FC2185AC8C4F7135A /* AppShortcuts.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				E7B490A0A8442A50586CE02F /* en */,
+				B4A286A8397318838CC8D8FD /* ru */,
+			);
+			name = AppShortcuts.strings;
+			sourceTree = "<group>";
+		};
 		5311A22F29F04EF300A5BE20 /* WidgetConfiguration.intentdefinition */ = {
 			isa = PBXVariantGroup;
 			children = (

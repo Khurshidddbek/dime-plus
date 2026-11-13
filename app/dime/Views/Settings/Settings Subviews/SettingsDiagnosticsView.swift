@@ -40,11 +40,14 @@ struct SettingsDiagnosticsView: View {
 
                         Text("Not saved - tap to retry")
                             .font(.system(.body, design: .rounded).weight(.semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .foregroundColor(Color.AlertRed)
                     .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
                     .frame(minHeight: 46)
                     .frame(maxWidth: .infinity)
                     .background(Color.AlertRed.opacity(0.23), in: RoundedRectangle(cornerRadius: 9, style: .continuous))

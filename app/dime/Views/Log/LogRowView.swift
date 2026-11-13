@@ -166,7 +166,10 @@ struct LogRowView: View, Equatable {
         let amount = MoneyFormat.string(row.amount, sign: row.income ? .plus : .minus)
         let when = future ? Fmt.string(.dayMonthYear, from: row.upcomingDate) : Fmt.time(row.date)
 
-        return [row.note, amount, row.categoryName, when].filter { !$0.isEmpty }.joined(separator: ", ")
+        // Without a note the title already is the category name: do not read it twice.
+        let category = row.note == row.categoryName ? "" : row.categoryName
+
+        return [row.note, amount, category, when].filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
     var body: some View {

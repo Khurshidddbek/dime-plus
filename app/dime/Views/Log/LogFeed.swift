@@ -155,7 +155,7 @@ final class LogFeed: NSObject, ObservableObject, NSFetchedResultsControllerDeleg
 
     static func periodStart(timeframe: Int, now: Date = Date.now) -> Date? {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         switch timeframe {

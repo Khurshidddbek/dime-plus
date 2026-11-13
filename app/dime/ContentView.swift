@@ -198,7 +198,8 @@ struct ContentView: View {
         firstLaunch = false
         showUpdateSheet = false
 
-        defaults.set(1, forKey: "firstWeekday")
+        defaults.set(UserDefaults.regionFirstWeekday, forKey: "firstWeekday")
+        defaults.set(true, forKey: "weekStartRegionMigrated")
         defaults.set(1, forKey: "haptics")
         defaults.set(1, forKey: "firstDayOfMonth")
         defaults.set(1, forKey: "notificationOption")
@@ -212,6 +213,8 @@ struct ContentView: View {
 
     // One-time migrations. They must not be marked done while the store is not open.
     private func runDataMigrations() {
+        migrateWeekStartToRegion()
+
         guard dataController.isStoreLoaded else {
             return
         }
@@ -247,6 +250,20 @@ struct ContentView: View {
                 dataMigration2 = false
             }
         }
+    }
+
+    // Older builds always wrote Sunday on first launch, so a Monday region was ignored.
+    // Runs once; a day picked in Settings later is kept.
+    private func migrateWeekStartToRegion() {
+        let defaults = UserDefaults.appGroup
+        guard !defaults.bool(forKey: "weekStartRegionMigrated") else {
+            return
+        }
+
+        if defaults.integer(forKey: "firstWeekday") == 1 && UserDefaults.regionFirstWeekday == 2 {
+            defaults.set(2, forKey: "firstWeekday")
+        }
+        defaults.set(true, forKey: "weekStartRegionMigrated")
     }
 
     // Cheap checks for launch and every return to the foreground.

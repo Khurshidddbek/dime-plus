@@ -261,7 +261,7 @@ struct LogInsightsView: View {
     var range: Int {
         var calendar = Calendar(identifier: .gregorian)
 
-        calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         if timeframe == 3 {
@@ -1144,7 +1144,7 @@ struct WeekStepperView: View {
 
     func weekStart(of date: Date) -> Date {
         var weekCalendar = Calendar(identifier: .gregorian)
-        weekCalendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        weekCalendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         weekCalendar.minimumDaysInFirstWeek = 4
 
         return weekCalendar.date(from: weekCalendar.dateComponents([.weekOfYear, .yearForWeekOfYear], from: date)) ?? date

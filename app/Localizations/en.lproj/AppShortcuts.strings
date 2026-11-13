@@ -1,0 +1,8 @@
+/* Siri and Shortcuts phrases from DimeShortcuts (ShortcutsProvider.swift). Keys must match the phrases exactly. */
+"Log a new transaction in ${applicationName}" = "Log a new transaction in ${applicationName}";
+"Add a transaction in ${applicationName}" = "Add a transaction in ${applicationName}";
+"Get insights in ${applicationName}" = "Get insights in ${applicationName}";
+"Show insights in ${applicationName}" = "Show insights in ${applicationName}";
+"Extract leftover amount for your budgets in ${applicationName}" = "Extract leftover amount for your budgets in ${applicationName}";
+"Check my budget in ${applicationName}" = "Check my budget in ${applicationName}";
+"Review bank messages in ${applicationName}" = "Review bank messages in ${applicationName}";

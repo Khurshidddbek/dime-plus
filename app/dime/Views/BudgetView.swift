@@ -1900,7 +1900,7 @@ struct FilteredBudgetView: View {
 
         var calendar = Calendar(identifier: .gregorian)
 
-        calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         // A period that starts mid-month is not in the same calendar unit as today, so the

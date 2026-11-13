@@ -87,6 +87,7 @@ struct SettingsWeekStartView: View {
           .contentShape(Rectangle())
           .onTapGesture {
             Haptics.selection()
+            UserDefaults.appGroup.set(true, forKey: "weekStartRegionMigrated")
 
             // No auto-close: the month start below is on the same screen.
             DispatchQueue.main.async {

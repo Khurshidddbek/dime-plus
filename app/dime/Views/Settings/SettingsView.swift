@@ -562,6 +562,7 @@ struct SettingsRowView: View {
 
         //                .font(.system(size: 17, weight: .medium, design: .rounded))
         .lineLimit(1)
+        .minimumScaleFactor(0.8)
         .foregroundColor(Color.PrimaryText)
 
       Spacer()

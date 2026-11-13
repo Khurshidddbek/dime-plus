@@ -543,7 +543,7 @@
 "Not in the app now" = "Сейчас нет в приложении";
 "Add what is missing" = "Добавить недостающее";
 "Replace everything" = "Заменить все";
-"Tap again to replace everything" = "Нажмите еще раз, чтобы заменить все";
+"Tap again to replace everything" = "Точно заменить?";
 "Everything in the app is replaced with this backup. A safety backup of the current data is made first." = "Все данные в приложении заменятся этой копией. Перед этим сохранится копия текущих данных.";
 "Restoring..." = "Восстанавливаем...";
 "Restored transactions: %lld" = "Восстановлено записей: %lld";

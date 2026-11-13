@@ -26,4 +26,15 @@ enum AppIdentifiers {
 extension UserDefaults {
     // Falls back to .standard so a signing mistake never crashes the app or an extension.
     static let appGroup: UserDefaults = UserDefaults(suiteName: AppIdentifiers.appGroup) ?? .standard
+
+    // Settings offers only Sunday (1) and Monday (2), so the region value is clamped to those.
+    static var regionFirstWeekday: Int {
+        Calendar.current.firstWeekday == 2 ? 2 : 1
+    }
+
+    // A missing or broken value falls back to the region instead of producing a bad calendar.
+    var storedFirstWeekday: Int {
+        let stored = integer(forKey: "firstWeekday")
+        return (1 ... 7).contains(stored) ? stored : UserDefaults.regionFirstWeekday
+    }
 }

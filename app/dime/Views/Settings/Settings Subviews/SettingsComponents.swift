@@ -102,13 +102,17 @@ struct SettingsActionButton: View {
                         .font(.system(.subheadline, design: .rounded).weight(.semibold))
                 }
 
+                // Russian labels run about 30% longer: wrap to a second line instead of truncating.
                 Text(title)
                     .font(.system(.body, design: .rounded).weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundColor(foreground)
             .padding(.horizontal, 12)
+            .padding(.vertical, 6)
             .frame(minHeight: 46)
             .frame(maxWidth: .infinity)
             .background(prominent ? Color.DarkBackground : Color.SettingsBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))

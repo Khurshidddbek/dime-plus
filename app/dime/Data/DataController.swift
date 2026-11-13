@@ -113,7 +113,7 @@ class DataController: ObservableObject {
 
     init() {
         // Widgets can run before the app's first launch; 0 is not a valid weekday.
-        UserDefaults.appGroup.register(defaults: ["firstWeekday": 1, "firstDayOfMonth": 1, "haptics": 1])
+        UserDefaults.appGroup.register(defaults: ["firstWeekday": UserDefaults.regionFirstWeekday, "firstDayOfMonth": 1, "haptics": 1])
 
         let description = NSPersistentStoreDescription()
 
@@ -836,7 +836,7 @@ class DataController: ObservableObject {
 
         var calendar = Calendar(identifier: .gregorian)
 
-        calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         switch type {
@@ -1080,7 +1080,7 @@ class DataController: ObservableObject {
 
         var calendar = Calendar(identifier: .gregorian)
 
-        calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         // Whole of today counts: a row dated later today must not drop out of the totals.
@@ -1640,7 +1640,7 @@ class DataController: ObservableObject {
             // calendar initialization
             var calendar = Calendar(identifier: .gregorian)
 
-            calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+            calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
             calendar.minimumDaysInFirstWeek = 4
 
             var dictionary = [Date: Double]()
@@ -1814,7 +1814,7 @@ class DataController: ObservableObject {
 
         var calendar = Calendar(identifier: .gregorian)
 
-        calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         let startPredicate = NSPredicate(format: "%K >= %@", #keyPath(Transaction.date), date as CVarArg)
@@ -1945,7 +1945,7 @@ class DataController: ObservableObject {
 
         var calendar = Calendar(identifier: .gregorian)
 
-        calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         let endPredicate = LogCutoff.currentPredicate()
@@ -1994,7 +1994,7 @@ class DataController: ObservableObject {
 
         var calendar = Calendar(identifier: .gregorian)
 
-        calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
         calendar.minimumDaysInFirstWeek = 4
 
         switch type {
