@@ -201,26 +201,29 @@ struct LogRowView: View, Equatable {
                         }
                     }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(row.note)
-                        .font(.system(.body, design: .rounded).weight(.medium))
+                // The amount sits on the note's first line, so a two-line note does not leave it floating between lines.
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(row.note)
+                            .font(.system(.body, design: .rounded).weight(.medium))
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                            .foregroundColor(future ? Color.SubtitleText : Color.PrimaryText)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(subtitle)
+                            .font(.system(.subheadline, design: .rounded).weight(.medium))
+                            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+                            .foregroundColor(future ? Color.EvenLighterText : Color.SubtitleText)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // The amount takes the width it needs first, the note wraps to a second line and only then truncates.
+                    AmountText(row.amount, role: .row, sign: amountSign, fit: .fullOnly, color: amountColor)
                         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                        .foregroundColor(future ? Color.SubtitleText : Color.PrimaryText)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(subtitle)
-                        .font(.system(.subheadline, design: .rounded).weight(.medium))
-                        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
-                        .foregroundColor(future ? Color.EvenLighterText : Color.SubtitleText)
-                        .lineLimit(1)
+                        .layoutPriority(1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                // The amount takes the width it needs first, the note wraps to a second line and only then truncates.
-                AmountText(row.amount, role: .row, sign: amountSign, fit: .fullOnly, color: amountColor)
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                    .layoutPriority(1)
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 10)

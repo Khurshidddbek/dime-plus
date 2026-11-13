@@ -46,9 +46,10 @@ struct TapOrHoldModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(isPressing ? 0.8 : 1)
-            .opacity(isPressing ? 0.5 : 1)
-            .animation(.easeOut(duration: 0.3), value: isPressing)
+            // A small dip in, then a soft spring back: a deep 0.8 scale felt jumpy at typing speed.
+            .scaleEffect(isPressing ? 0.94 : 1)
+            .opacity(isPressing ? 0.7 : 1)
+            .animation(isPressing ? .easeOut(duration: 0.08) : .spring(response: 0.3, dampingFraction: 0.75), value: isPressing)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -183,8 +184,9 @@ struct EntryAmountDisplay: View {
         amountText
             .lineLimit(1)
             .minimumScaleFactor(0.4)
-            .contentTransition(.numericText())
-            .animation(.snappy(duration: 0.18), value: amount)
+            // The value tells the transition which way to roll, so only the changed digits move.
+            .contentTransition(.numericText(value: amount.value))
+            .animation(.smooth(duration: 0.3), value: amount)
             .modifier(EntryShakeEffect(animatableData: CGFloat(shake)))
             .animation(.linear(duration: 0.35), value: shake)
             .animation(.easeOut(duration: 0.2), value: isError)
