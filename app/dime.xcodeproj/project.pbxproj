@@ -7,12 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00A1329B9A0CF75010D61443 /* SMSIngestor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86A5132F446AB84A0FED16BF /* SMSIngestor.swift */; };
+		057C817F6B734F3E941E381A /* EntryNumberPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5089C2C87EE9DA94E3A07586 /* EntryNumberPad.swift */; };
+		0C0E96A26205B404FE90EAF9 /* CategoryDeleteCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D9DEDCEA995A63A7DC9167 /* CategoryDeleteCard.swift */; };
 		18BAAECFE42C52902B979D39 /* MoneyFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC097DBD4EEDE89B56CE26A /* MoneyFormat.swift */; };
+		1A94BBF12447D0B2E83B2878 /* SMSPasteImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EBE47BE4E191A6321175F0 /* SMSPasteImportView.swift */; };
 		296CC5059577E3398D71A686 /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4817E6B7DCD0CABC791C8F /* AppIdentifiers.swift */; };
+		2A81BCAA93DE31ED3753E817 /* SMSCardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731DB11C2203E27E9CB5E82C /* SMSCardStore.swift */; };
 		2CFC334DC0F6E6370CC5688A /* DataController+BulkWrites.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF37569089821E5D3ED7B45 /* DataController+BulkWrites.swift */; };
+		2D1EF668295B7135E3B76209 /* SMSJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59BF81BF9CCFAF91A3A02CC8 /* SMSJSONFile.swift */; };
+		3348516B577BF1F118135D1A /* InsightsTrendChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = E499D085660F40F16D85BD56 /* InsightsTrendChart.swift */; };
 		378805F157547ECD2D14E8B0 /* MoneyFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC097DBD4EEDE89B56CE26A /* MoneyFormat.swift */; };
 		385F15CDC4C3AABBC7B44ECC /* AmountText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B327E87BD422190110B416E /* AmountText.swift */; };
 		3E43F6F2E56FFAFD09881B82 /* MoneyFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC097DBD4EEDE89B56CE26A /* MoneyFormat.swift */; };
+		4E8B5CEDE8F8A09F5F78DC84 /* CSVCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9B39E23135E53C72B5B536 /* CSVCodec.swift */; };
 		530C89D62A793B6C00B5028D /* ShortcutsEntities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530C89D52A793B6C00B5028D /* ShortcutsEntities.swift */; };
 		530C9DFD28ACE14A0038535F /* BudgetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530C9DFC28ACE14A0038535F /* BudgetWidget.swift */; };
 		530C9DFE28ACE14A0038535F /* BudgetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530C9DFC28ACE14A0038535F /* BudgetWidget.swift */; };
@@ -152,33 +160,74 @@
 		53E832E72B0B067B000CBBA0 /* TransactionCategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53E832E62B0B067B000CBBA0 /* TransactionCategoryPicker.swift */; };
 		53EB930E28A65A570026BE28 /* Color.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5327D2B5287C6AFB00F76ADF /* Color.swift */; };
 		53EB930F28A65B250026BE28 /* FontExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B1D1A4289383B100E28062 /* FontExtension.swift */; };
+		53EF2EE8B65FA67317FF8163 /* LogRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4754B93DBDE518B4EC9A9A30 /* LogRowView.swift */; };
+		58216488C9B750AE6F03BD49 /* SMSDataLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A249CA9DB8DBCAD80567B041 /* SMSDataLookup.swift */; };
 		5D16B0F3FD1F9B4E3C636761 /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4817E6B7DCD0CABC791C8F /* AppIdentifiers.swift */; };
+		60F1E57BB69D81915931C479 /* SMSInboxEntryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDA0F77A88F788310DCF9D1A /* SMSInboxEntryCard.swift */; };
+		63F2D1E0D7875BAA54EFE845 /* SettingsDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC603FD4DFEB3CE07092974C /* SettingsDiagnosticsView.swift */; };
+		644E6996FB2733BD67DA6521 /* InsightsFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A3FC404BF76D60DD1035204 /* InsightsFormat.swift */; };
+		649BD3B57D59A8BAD1FB4C6C /* InsightsShareBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 977C5C72EC710BA98D335C35 /* InsightsShareBar.swift */; };
 		6AFA1D036D02B1598EA90DAB /* DiagnosticsLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BEA2EB9DB210BFD99A7D21 /* DiagnosticsLog.swift */; };
 		71765711074F9E7A2CFD4769 /* DiagnosticsLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BEA2EB9DB210BFD99A7D21 /* DiagnosticsLog.swift */; };
 		7B223111147FB70E85315E19 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06B5E413B84F986E76F798F /* Haptics.swift */; };
+		7D60A9AB1BC32CAB20325B1D /* SMSInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 155EEE03B1C6B892206B1BB7 /* SMSInboxView.swift */; };
+		7DD856706D63C9EDC62A8E9E /* InsightsHeadlineCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7683BEA0E20E4B7EFA73EF /* InsightsHeadlineCard.swift */; };
+		7F69981A3B263BB51F5C8D3E /* TransactionEntryDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E2B7D628A58D4A85260C9C0 /* TransactionEntryDraft.swift */; };
 		7FC3D9535B222E7BE53027F3 /* DiagnosticsLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BEA2EB9DB210BFD99A7D21 /* DiagnosticsLog.swift */; };
+		810A9D2CECFDFA0F634B3BE1 /* AppLockWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D3BB1AA579C39E1443BD70 /* AppLockWindow.swift */; };
+		822F2242D7851C0AB2E2C6D6 /* SMSParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11F969F6B5F8D5EAFECF8A18 /* SMSParser.swift */; };
 		842C5C15A02FAEEB97C8D695 /* Localizable.stringsdict in Resources */ = {isa = PBXBuildFile; fileRef = D63B20482D8728C300CAFB20 /* Localizable.stringsdict */; };
+		85A171194BE6A36EBA02A03F /* SMSIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F154474C43A309297230E543 /* SMSIntents.swift */; };
+		870E26910053066B7F4F856F /* SMSSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDBDC383D0DA75FDA3A6BCEF /* SMSSettingsView.swift */; };
 		897D107B309594331254BC0F /* AmountText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B327E87BD422190110B416E /* AmountText.swift */; };
+		8BA7E71426C779868504DEE3 /* SMSInboxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61E3138FFFAC224093095C1 /* SMSInboxStore.swift */; };
 		8E9A7C03FD383A2C535A5C97 /* BackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48A66A382751F2765D043F46 /* BackupStore.swift */; };
+		9094EF26F569F1A29F9B23A4 /* SMSRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE60629D3D4A274BD25867D /* SMSRouter.swift */; };
+		9157C0A386213D905D856606 /* NoteSuggestionIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2848133D662F34D4C34A5B96 /* NoteSuggestionIndex.swift */; };
+		96D75EE6B6BEBC7F0726E413 /* MerchantNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A4B96B19AAAD6835CD83FD2 /* MerchantNormalizer.swift */; };
 		98D60E7CF8C735D7EB9B02CE /* StoreRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = B323B757E7A5FE7AB34803E1 /* StoreRecords.swift */; };
 		9D25C15A26C6722959E79380 /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4817E6B7DCD0CABC791C8F /* AppIdentifiers.swift */; };
+		9E32C245357750009B00CC19 /* InsightsPeriod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288B68B32A3770DB2AB01EC2 /* InsightsPeriod.swift */; };
 		A0C1B5389D866216CF47E8A0 /* Fmt.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7655FEF4E6BA7C65D812159 /* Fmt.swift */; };
+		A0FCCB78178DDA6B41C41AA0 /* CSVImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B452E4C37CADC1BF42E69EC5 /* CSVImport.swift */; };
+		A4EEA2C3B5CAFD54A26FDC44 /* LogFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F3F6311D407E99A862FB46D /* LogFeed.swift */; };
+		A6E6B096B5DE20E8F8CE3000 /* InsightsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3C7AF6F7AF89A9A92B646B /* InsightsData.swift */; };
+		A7911C5C39DEB7BEB7F0B6A8 /* SMSRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EA848FBF89AA5CB16973A5A /* SMSRulesView.swift */; };
+		A840161D7B7E17DE2439BA14 /* SMSSetupGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8228AC2E35347F192064A78D /* SMSSetupGuideView.swift */; };
+		AC39F07FB3B65F106D4F76DB /* AmountInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D63FD3C7A7FE2527BA36F01 /* AmountInput.swift */; };
+		AD8892A0BAFBB486B17D1567 /* InsightsCategoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC554106F0CF892FBB957F3 /* InsightsCategoryDetailView.swift */; };
 		AE5B3D792AEE99E000AB364E /* NumberPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE5B3D782AEE99E000AB364E /* NumberPad.swift */; };
+		AEA1E34DD139E66C95F50755 /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38485EBE650161C7E96AC11E /* SettingsComponents.swift */; };
 		AEADEF6F2AE94DA3006EB614 /* Toast.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEADEF6E2AE94DA3006EB614 /* Toast.swift */; };
 		AEADEF712AE94DA8006EB614 /* BackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEADEF702AE94DA8006EB614 /* BackButton.swift */; };
 		AEADEF742AE94DC3006EB614 /* ToolbarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEADEF722AE94DC3006EB614 /* ToolbarButton.swift */; };
 		AEADEF752AE94DC3006EB614 /* Toolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEADEF732AE94DC3006EB614 /* Toolbar.swift */; };
 		AECE7F9E2AED1A6800B57267 /* SuggestedTransactions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AECE7F9D2AED1A6800B57267 /* SuggestedTransactions.swift */; };
+		B027C5889FFF5D9E948CC9B8 /* SettingsBackupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD99B664190392A7FDB752AF /* SettingsBackupsView.swift */; };
 		B34BE894D99B566CD5378099 /* DiagnosticsLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BEA2EB9DB210BFD99A7D21 /* DiagnosticsLog.swift */; };
 		B85778231FCEA4F840990DBD /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4817E6B7DCD0CABC791C8F /* AppIdentifiers.swift */; };
+		BCE36C6E9BDAF2BFEAE2D717 /* InsightsControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552C1254F72C911D12B598E0 /* InsightsControls.swift */; };
+		C42531F7A96D593531E3B57A /* LogSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A86C1B2D41865FBA97A5854E /* LogSearchView.swift */; };
+		CF4A5804C8925FAD8528C53B /* FilteredInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 415AB8AFE9759BFDA897081C /* FilteredInsightsView.swift */; };
+		D08B98280650C768949C3A26 /* LogActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED211AB8CD82D3EA213165C /* LogActions.swift */; };
 		D523C72DDF75BE3C62F3F77F /* ToastCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047DECD02B05D05C0323AECF /* ToastCenter.swift */; };
 		D63B204A2D8728C300CAFB20 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D63B20462D8728C300CAFB20 /* Localizable.strings */; };
 		D63B204B2D8728C300CAFB20 /* Localizable.stringsdict in Resources */ = {isa = PBXBuildFile; fileRef = D63B20482D8728C300CAFB20 /* Localizable.stringsdict */; };
+		D9026F39BB2F055009D167EE /* InsightsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ABB35B82684F067CF2608A /* InsightsModel.swift */; };
+		DA52EE8C9D1F0381F8DB489A /* SMSRuleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08FAD4CA4DAAA25F22294599 /* SMSRuleStore.swift */; };
+		E8608E0C7E6127B6D1E73A38 /* SettingsTrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51E2792C249709D39B9CD8DB /* SettingsTrashView.swift */; };
 		EB9076CCD69E9B39C76445BF /* TrashStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA5099FAD56150E4F0FA841E /* TrashStore.swift */; };
+		EBAA3592E5B17DE31ACF420B /* DataExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345F4EB9DFD8096FBA21B65C /* DataExport.swift */; };
+		EBFE727CD096F1030A53DACD /* LogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 587830C56B3FAC18EC305A17 /* LogModels.swift */; };
+		F2DF8D6DF779C6811B7254DC /* SMSParserSelfCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AECBE30FAD6C90D78BC4588 /* SMSParserSelfCheck.swift */; };
 		F69B54DBCA45C8964A5CC62B /* MoneyFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC097DBD4EEDE89B56CE26A /* MoneyFormat.swift */; };
+		F6DC70BD2558B5E6B785C4DF /* InsightsBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B02B5818587FD047F03626 /* InsightsBuilder.swift */; };
+		F6E0F58F3D57A47EF49DF719 /* InsightsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = B95372F78029ECF2D85FF9A0 /* InsightsRows.swift */; };
+		F761F7CFC54FF7911BF55F19 /* SettingsExportCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6F1C9445411CE18ED95391 /* SettingsExportCard.swift */; };
 		F99A595ABB47769FAB37924F /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D63B20462D8728C300CAFB20 /* Localizable.strings */; };
 		FAC1D8293AA3705003CB7E16 /* AmountReveal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ABC16A27B5D2FACC454F9DA /* AmountReveal.swift */; };
 		FAC90DD434C3E6F506EF4D9E /* PersistenceStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69D69F8EE8CDD6715D18784B /* PersistenceStatus.swift */; };
+		FD868240B5A3905E72714AD0 /* SMSComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9373B53FE32489436F45C2A8 /* SMSComponents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -233,12 +282,32 @@
 
 /* Begin PBXFileReference section */
 		047DECD02B05D05C0323AECF /* ToastCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastCenter.swift; sourceTree = "<group>"; };
+		08FAD4CA4DAAA25F22294599 /* SMSRuleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSRuleStore.swift; sourceTree = "<group>"; };
+		0E2B7D628A58D4A85260C9C0 /* TransactionEntryDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionEntryDraft.swift; sourceTree = "<group>"; };
 		102A0247612C5776D7E9AE1D /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = Localizations/ru.lproj/Localizable.strings; sourceTree = "<group>"; };
+		11F969F6B5F8D5EAFECF8A18 /* SMSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSParser.swift; sourceTree = "<group>"; };
+		155EEE03B1C6B892206B1BB7 /* SMSInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSInboxView.swift; sourceTree = "<group>"; };
+		16B02B5818587FD047F03626 /* InsightsBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsBuilder.swift; sourceTree = "<group>"; };
+		1A6F1C9445411CE18ED95391 /* SettingsExportCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsExportCard.swift; sourceTree = "<group>"; };
+		1B7683BEA0E20E4B7EFA73EF /* InsightsHeadlineCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsHeadlineCard.swift; sourceTree = "<group>"; };
 		1CA8A2ECF25F20F737B58E75 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/WidgetConfiguration.strings; sourceTree = "<group>"; };
+		1ED211AB8CD82D3EA213165C /* LogActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogActions.swift; sourceTree = "<group>"; };
+		2848133D662F34D4C34A5B96 /* NoteSuggestionIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSuggestionIndex.swift; sourceTree = "<group>"; };
+		288B68B32A3770DB2AB01EC2 /* InsightsPeriod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsPeriod.swift; sourceTree = "<group>"; };
 		2AC097DBD4EEDE89B56CE26A /* MoneyFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyFormat.swift; sourceTree = "<group>"; };
+		2CC554106F0CF892FBB957F3 /* InsightsCategoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsCategoryDetailView.swift; sourceTree = "<group>"; };
+		2EA848FBF89AA5CB16973A5A /* SMSRulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSRulesView.swift; sourceTree = "<group>"; };
+		2F3F6311D407E99A862FB46D /* LogFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogFeed.swift; sourceTree = "<group>"; };
+		345F4EB9DFD8096FBA21B65C /* DataExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExport.swift; sourceTree = "<group>"; };
+		38485EBE650161C7E96AC11E /* SettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsComponents.swift; sourceTree = "<group>"; };
+		3A3FC404BF76D60DD1035204 /* InsightsFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsFormat.swift; sourceTree = "<group>"; };
 		3ABC16A27B5D2FACC454F9DA /* AmountReveal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmountReveal.swift; sourceTree = "<group>"; };
 		3BB355D02A5FE8BFD3B1EBA7 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = ru; path = Localizations/ru.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
+		415AB8AFE9759BFDA897081C /* FilteredInsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilteredInsightsView.swift; sourceTree = "<group>"; };
+		4754B93DBDE518B4EC9A9A30 /* LogRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogRowView.swift; sourceTree = "<group>"; };
 		48A66A382751F2765D043F46 /* BackupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupStore.swift; sourceTree = "<group>"; };
+		5089C2C87EE9DA94E3A07586 /* EntryNumberPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryNumberPad.swift; sourceTree = "<group>"; };
+		51E2792C249709D39B9CD8DB /* SettingsTrashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTrashView.swift; sourceTree = "<group>"; };
 		530C89D52A793B6C00B5028D /* ShortcutsEntities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsEntities.swift; sourceTree = "<group>"; };
 		530C9DFC28ACE14A0038535F /* BudgetWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetWidget.swift; sourceTree = "<group>"; };
 		5311A22E29F04EF300A5BE20 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.intentdefinition; name = Base; path = Base.lproj/WidgetConfiguration.intentdefinition; sourceTree = "<group>"; };
@@ -353,12 +422,30 @@
 		53E832E42B0A2CAF000CBBA0 /* InsightsSummaryBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsSummaryBlock.swift; sourceTree = "<group>"; };
 		53E832E62B0B067B000CBBA0 /* TransactionCategoryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionCategoryPicker.swift; sourceTree = "<group>"; };
 		53EB931028A65F670026BE28 /* ExpenditureWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ExpenditureWidgetExtension.entitlements; sourceTree = "<group>"; };
+		54EBE47BE4E191A6321175F0 /* SMSPasteImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSPasteImportView.swift; sourceTree = "<group>"; };
+		552C1254F72C911D12B598E0 /* InsightsControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsControls.swift; sourceTree = "<group>"; };
+		587830C56B3FAC18EC305A17 /* LogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogModels.swift; sourceTree = "<group>"; };
+		59BF81BF9CCFAF91A3A02CC8 /* SMSJSONFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSJSONFile.swift; sourceTree = "<group>"; };
+		5A4B96B19AAAD6835CD83FD2 /* MerchantNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MerchantNormalizer.swift; sourceTree = "<group>"; };
+		5F9B39E23135E53C72B5B536 /* CSVCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVCodec.swift; sourceTree = "<group>"; };
 		69D69F8EE8CDD6715D18784B /* PersistenceStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceStatus.swift; sourceTree = "<group>"; };
 		6B327E87BD422190110B416E /* AmountText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmountText.swift; sourceTree = "<group>"; };
 		6B4817E6B7DCD0CABC791C8F /* AppIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIdentifiers.swift; sourceTree = "<group>"; };
 		6D92A256F1DACDD2684FAC37 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/MainInterface.strings; sourceTree = "<group>"; };
+		731DB11C2203E27E9CB5E82C /* SMSCardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSCardStore.swift; sourceTree = "<group>"; };
+		7D63FD3C7A7FE2527BA36F01 /* AmountInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmountInput.swift; sourceTree = "<group>"; };
+		8228AC2E35347F192064A78D /* SMSSetupGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSSetupGuideView.swift; sourceTree = "<group>"; };
+		86A5132F446AB84A0FED16BF /* SMSIngestor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSIngestor.swift; sourceTree = "<group>"; };
+		87D3BB1AA579C39E1443BD70 /* AppLockWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockWindow.swift; sourceTree = "<group>"; };
+		87D9DEDCEA995A63A7DC9167 /* CategoryDeleteCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryDeleteCard.swift; sourceTree = "<group>"; };
+		8AECBE30FAD6C90D78BC4588 /* SMSParserSelfCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSParserSelfCheck.swift; sourceTree = "<group>"; };
+		9373B53FE32489436F45C2A8 /* SMSComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSComponents.swift; sourceTree = "<group>"; };
+		977C5C72EC710BA98D335C35 /* InsightsShareBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsShareBar.swift; sourceTree = "<group>"; };
 		98BEA2EB9DB210BFD99A7D21 /* DiagnosticsLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsLog.swift; sourceTree = "<group>"; };
 		9AF37569089821E5D3ED7B45 /* DataController+BulkWrites.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataController+BulkWrites.swift"; sourceTree = "<group>"; };
+		A249CA9DB8DBCAD80567B041 /* SMSDataLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSDataLookup.swift; sourceTree = "<group>"; };
+		A86C1B2D41865FBA97A5854E /* LogSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogSearchView.swift; sourceTree = "<group>"; };
+		AC603FD4DFEB3CE07092974C /* SettingsDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDiagnosticsView.swift; sourceTree = "<group>"; };
 		AE5B3D782AEE99E000AB364E /* NumberPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberPad.swift; sourceTree = "<group>"; };
 		AEADEF6E2AE94DA3006EB614 /* Toast.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Toast.swift; sourceTree = "<group>"; };
 		AEADEF702AE94DA8006EB614 /* BackButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackButton.swift; sourceTree = "<group>"; };
@@ -366,11 +453,22 @@
 		AEADEF732AE94DC3006EB614 /* Toolbar.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
 		AECE7F9D2AED1A6800B57267 /* SuggestedTransactions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestedTransactions.swift; sourceTree = "<group>"; };
 		B323B757E7A5FE7AB34803E1 /* StoreRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreRecords.swift; sourceTree = "<group>"; };
+		B452E4C37CADC1BF42E69EC5 /* CSVImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVImport.swift; sourceTree = "<group>"; };
+		B95372F78029ECF2D85FF9A0 /* InsightsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsRows.swift; sourceTree = "<group>"; };
 		BA5099FAD56150E4F0FA841E /* TrashStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashStore.swift; sourceTree = "<group>"; };
+		BDA0F77A88F788310DCF9D1A /* SMSInboxEntryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSInboxEntryCard.swift; sourceTree = "<group>"; };
 		C06B5E413B84F986E76F798F /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
+		CD99B664190392A7FDB752AF /* SettingsBackupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsBackupsView.swift; sourceTree = "<group>"; };
+		D61E3138FFFAC224093095C1 /* SMSInboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSInboxStore.swift; sourceTree = "<group>"; };
 		D63B20472D8728C300CAFB20 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = Localizations/en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D63B20492D8728C300CAFB20 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = en; path = Localizations/en.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
 		D7655FEF4E6BA7C65D812159 /* Fmt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fmt.swift; sourceTree = "<group>"; };
+		DFE60629D3D4A274BD25867D /* SMSRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSRouter.swift; sourceTree = "<group>"; };
+		E499D085660F40F16D85BD56 /* InsightsTrendChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsTrendChart.swift; sourceTree = "<group>"; };
+		EF3C7AF6F7AF89A9A92B646B /* InsightsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsData.swift; sourceTree = "<group>"; };
+		F154474C43A309297230E543 /* SMSIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSIntents.swift; sourceTree = "<group>"; };
+		F2ABB35B82684F067CF2608A /* InsightsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsModel.swift; sourceTree = "<group>"; };
+		FDBDC383D0DA75FDA3A6BCEF /* SMSSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSSettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -491,6 +589,7 @@
 				5327D296287C69A400F76ADF /* Utilities */,
 				5327D28C287C697C00F76ADF /* Preview Content */,
 				AE30A1522AE7D95200E516B3 /* Components */,
+				632F064E487FABEE98089DAB /* SMS */,
 			);
 			path = dime;
 			sourceTree = "<group>";
@@ -568,6 +667,10 @@
 				532C58BB2A629C3900DA2C81 /* NewBudgetView.swift */,
 				5327D2D5287C6B5E00F76ADF /* CustomTabBar.swift */,
 				5358E9162AC86DA1003E8CA9 /* SingleTransactionPhotoView.swift */,
+				8691B6AAB8AB7AFF6161606A /* Entry */,
+				538E8FE95314CDBD6CC0B5AC /* Log */,
+				E087358B01E36BE61B53D836 /* Manage */,
+				FDCFF31066F26A8C4F8DAE3E /* Insights */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -609,6 +712,20 @@
 				5313EC6728ACE941000EAB0C /* IntentsUI.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		538E8FE95314CDBD6CC0B5AC /* Log */ = {
+			isa = PBXGroup;
+			children = (
+				587830C56B3FAC18EC305A17 /* LogModels.swift */,
+				2F3F6311D407E99A862FB46D /* LogFeed.swift */,
+				1ED211AB8CD82D3EA213165C /* LogActions.swift */,
+				4754B93DBDE518B4EC9A9A30 /* LogRowView.swift */,
+				A86C1B2D41865FBA97A5854E /* LogSearchView.swift */,
+				87D3BB1AA579C39E1443BD70 /* AppLockWindow.swift */,
+			);
+			name = Log;
+			path = Log;
 			sourceTree = "<group>";
 		};
 		53B1D18F288ED7E500E28062 /* ExpenditureWidget */ = {
@@ -677,8 +794,51 @@
 				53D6BDD32AF73CA100F5728E /* SettingsFeatureLabView.swift */,
 				53D6BDD52AF73CE400F5728E /* SettingsUpcomingView.swift */,
 				53D6BDE02AF73FAB00F5728E /* SettingsSubviewModifier.swift */,
+				CD99B664190392A7FDB752AF /* SettingsBackupsView.swift */,
+				38485EBE650161C7E96AC11E /* SettingsComponents.swift */,
+				AC603FD4DFEB3CE07092974C /* SettingsDiagnosticsView.swift */,
+				51E2792C249709D39B9CD8DB /* SettingsTrashView.swift */,
+				1A6F1C9445411CE18ED95391 /* SettingsExportCard.swift */,
 			);
 			path = "Settings Subviews";
+			sourceTree = "<group>";
+		};
+		632F064E487FABEE98089DAB /* SMS */ = {
+			isa = PBXGroup;
+			children = (
+				5A4B96B19AAAD6835CD83FD2 /* MerchantNormalizer.swift */,
+				731DB11C2203E27E9CB5E82C /* SMSCardStore.swift */,
+				9373B53FE32489436F45C2A8 /* SMSComponents.swift */,
+				A249CA9DB8DBCAD80567B041 /* SMSDataLookup.swift */,
+				BDA0F77A88F788310DCF9D1A /* SMSInboxEntryCard.swift */,
+				D61E3138FFFAC224093095C1 /* SMSInboxStore.swift */,
+				155EEE03B1C6B892206B1BB7 /* SMSInboxView.swift */,
+				86A5132F446AB84A0FED16BF /* SMSIngestor.swift */,
+				F154474C43A309297230E543 /* SMSIntents.swift */,
+				59BF81BF9CCFAF91A3A02CC8 /* SMSJSONFile.swift */,
+				11F969F6B5F8D5EAFECF8A18 /* SMSParser.swift */,
+				8AECBE30FAD6C90D78BC4588 /* SMSParserSelfCheck.swift */,
+				54EBE47BE4E191A6321175F0 /* SMSPasteImportView.swift */,
+				DFE60629D3D4A274BD25867D /* SMSRouter.swift */,
+				08FAD4CA4DAAA25F22294599 /* SMSRuleStore.swift */,
+				2EA848FBF89AA5CB16973A5A /* SMSRulesView.swift */,
+				FDBDC383D0DA75FDA3A6BCEF /* SMSSettingsView.swift */,
+				8228AC2E35347F192064A78D /* SMSSetupGuideView.swift */,
+			);
+			name = SMS;
+			path = SMS;
+			sourceTree = "<group>";
+		};
+		8691B6AAB8AB7AFF6161606A /* Entry */ = {
+			isa = PBXGroup;
+			children = (
+				7D63FD3C7A7FE2527BA36F01 /* AmountInput.swift */,
+				5089C2C87EE9DA94E3A07586 /* EntryNumberPad.swift */,
+				2848133D662F34D4C34A5B96 /* NoteSuggestionIndex.swift */,
+				0E2B7D628A58D4A85260C9C0 /* TransactionEntryDraft.swift */,
+			);
+			name = Entry;
+			path = Entry;
 			sourceTree = "<group>";
 		};
 		AE30A1522AE7D95200E516B3 /* Components */ = {
@@ -713,6 +873,38 @@
 				53E832E62B0B067B000CBBA0 /* TransactionCategoryPicker.swift */,
 			);
 			path = Transactions;
+			sourceTree = "<group>";
+		};
+		E087358B01E36BE61B53D836 /* Manage */ = {
+			isa = PBXGroup;
+			children = (
+				5F9B39E23135E53C72B5B536 /* CSVCodec.swift */,
+				B452E4C37CADC1BF42E69EC5 /* CSVImport.swift */,
+				345F4EB9DFD8096FBA21B65C /* DataExport.swift */,
+				87D9DEDCEA995A63A7DC9167 /* CategoryDeleteCard.swift */,
+			);
+			name = Manage;
+			path = Manage;
+			sourceTree = "<group>";
+		};
+		FDCFF31066F26A8C4F8DAE3E /* Insights */ = {
+			isa = PBXGroup;
+			children = (
+				415AB8AFE9759BFDA897081C /* FilteredInsightsView.swift */,
+				16B02B5818587FD047F03626 /* InsightsBuilder.swift */,
+				2CC554106F0CF892FBB957F3 /* InsightsCategoryDetailView.swift */,
+				552C1254F72C911D12B598E0 /* InsightsControls.swift */,
+				EF3C7AF6F7AF89A9A92B646B /* InsightsData.swift */,
+				3A3FC404BF76D60DD1035204 /* InsightsFormat.swift */,
+				1B7683BEA0E20E4B7EFA73EF /* InsightsHeadlineCard.swift */,
+				F2ABB35B82684F067CF2608A /* InsightsModel.swift */,
+				288B68B32A3770DB2AB01EC2 /* InsightsPeriod.swift */,
+				B95372F78029ECF2D85FF9A0 /* InsightsRows.swift */,
+				977C5C72EC710BA98D335C35 /* InsightsShareBar.swift */,
+				E499D085660F40F16D85BD56 /* InsightsTrendChart.swift */,
+			);
+			name = Insights;
+			path = Insights;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1031,6 +1223,55 @@
 				2CFC334DC0F6E6370CC5688A /* DataController+BulkWrites.swift in Sources */,
 				EB9076CCD69E9B39C76445BF /* TrashStore.swift in Sources */,
 				8E9A7C03FD383A2C535A5C97 /* BackupStore.swift in Sources */,
+				AC39F07FB3B65F106D4F76DB /* AmountInput.swift in Sources */,
+				057C817F6B734F3E941E381A /* EntryNumberPad.swift in Sources */,
+				9157C0A386213D905D856606 /* NoteSuggestionIndex.swift in Sources */,
+				7F69981A3B263BB51F5C8D3E /* TransactionEntryDraft.swift in Sources */,
+				EBFE727CD096F1030A53DACD /* LogModels.swift in Sources */,
+				A4EEA2C3B5CAFD54A26FDC44 /* LogFeed.swift in Sources */,
+				D08B98280650C768949C3A26 /* LogActions.swift in Sources */,
+				53EF2EE8B65FA67317FF8163 /* LogRowView.swift in Sources */,
+				C42531F7A96D593531E3B57A /* LogSearchView.swift in Sources */,
+				810A9D2CECFDFA0F634B3BE1 /* AppLockWindow.swift in Sources */,
+				4E8B5CEDE8F8A09F5F78DC84 /* CSVCodec.swift in Sources */,
+				A0FCCB78178DDA6B41C41AA0 /* CSVImport.swift in Sources */,
+				EBAA3592E5B17DE31ACF420B /* DataExport.swift in Sources */,
+				0C0E96A26205B404FE90EAF9 /* CategoryDeleteCard.swift in Sources */,
+				B027C5889FFF5D9E948CC9B8 /* SettingsBackupsView.swift in Sources */,
+				AEA1E34DD139E66C95F50755 /* SettingsComponents.swift in Sources */,
+				63F2D1E0D7875BAA54EFE845 /* SettingsDiagnosticsView.swift in Sources */,
+				E8608E0C7E6127B6D1E73A38 /* SettingsTrashView.swift in Sources */,
+				CF4A5804C8925FAD8528C53B /* FilteredInsightsView.swift in Sources */,
+				F6DC70BD2558B5E6B785C4DF /* InsightsBuilder.swift in Sources */,
+				AD8892A0BAFBB486B17D1567 /* InsightsCategoryDetailView.swift in Sources */,
+				BCE36C6E9BDAF2BFEAE2D717 /* InsightsControls.swift in Sources */,
+				A6E6B096B5DE20E8F8CE3000 /* InsightsData.swift in Sources */,
+				644E6996FB2733BD67DA6521 /* InsightsFormat.swift in Sources */,
+				7DD856706D63C9EDC62A8E9E /* InsightsHeadlineCard.swift in Sources */,
+				D9026F39BB2F055009D167EE /* InsightsModel.swift in Sources */,
+				9E32C245357750009B00CC19 /* InsightsPeriod.swift in Sources */,
+				F6E0F58F3D57A47EF49DF719 /* InsightsRows.swift in Sources */,
+				649BD3B57D59A8BAD1FB4C6C /* InsightsShareBar.swift in Sources */,
+				3348516B577BF1F118135D1A /* InsightsTrendChart.swift in Sources */,
+				F761F7CFC54FF7911BF55F19 /* SettingsExportCard.swift in Sources */,
+				96D75EE6B6BEBC7F0726E413 /* MerchantNormalizer.swift in Sources */,
+				2A81BCAA93DE31ED3753E817 /* SMSCardStore.swift in Sources */,
+				FD868240B5A3905E72714AD0 /* SMSComponents.swift in Sources */,
+				58216488C9B750AE6F03BD49 /* SMSDataLookup.swift in Sources */,
+				60F1E57BB69D81915931C479 /* SMSInboxEntryCard.swift in Sources */,
+				8BA7E71426C779868504DEE3 /* SMSInboxStore.swift in Sources */,
+				7D60A9AB1BC32CAB20325B1D /* SMSInboxView.swift in Sources */,
+				00A1329B9A0CF75010D61443 /* SMSIngestor.swift in Sources */,
+				85A171194BE6A36EBA02A03F /* SMSIntents.swift in Sources */,
+				2D1EF668295B7135E3B76209 /* SMSJSONFile.swift in Sources */,
+				822F2242D7851C0AB2E2C6D6 /* SMSParser.swift in Sources */,
+				F2DF8D6DF779C6811B7254DC /* SMSParserSelfCheck.swift in Sources */,
+				1A94BBF12447D0B2E83B2878 /* SMSPasteImportView.swift in Sources */,
+				9094EF26F569F1A29F9B23A4 /* SMSRouter.swift in Sources */,
+				DA52EE8C9D1F0381F8DB489A /* SMSRuleStore.swift in Sources */,
+				A7911C5C39DEB7BEB7F0B6A8 /* SMSRulesView.swift in Sources */,
+				870E26910053066B7F4F856F /* SMSSettingsView.swift in Sources */,
+				A840161D7B7E17DE2439BA14 /* SMSSetupGuideView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
