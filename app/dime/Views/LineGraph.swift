@@ -47,7 +47,9 @@ struct LineGraph: View {
     @State var graphProgress: CGFloat = 0
 
     func getGradient(totalPoints: Double, range: Double) -> Gradient {
-        let centreLocation = 1 - (range - 1) / (totalPoints - 1)
+        // A single point has no span: keep the stops inside 0...1 instead of dividing by zero.
+        let rawLocation = totalPoints > 1 ? 1 - (range - 1) / (totalPoints - 1) : 0
+        let centreLocation = min(max(rawLocation, 0.01), 1)
         let leftLocation = centreLocation - 0.01
 
         return Gradient(stops: [Gradient.Stop(color: Color.Outline, location: leftLocation),
@@ -58,7 +60,7 @@ struct LineGraph: View {
         GeometryReader { proxy in
 
             let height = proxy.size.height
-            let width = (proxy.size.width) / CGFloat(data.count - 1)
+            let width = data.count > 1 ? (proxy.size.width) / CGFloat(data.count - 1) : 0
             let dataValues = data.map { $0.amount }
 
             let maxPoint = (dataValues.max() ?? 0.0)
@@ -66,7 +68,9 @@ struct LineGraph: View {
 
             let points = data.enumerated().compactMap { item -> CGPoint in
 
-                let progress = (item.element.amount - minPoint) / (maxPoint - minPoint)
+                // A flat series (nothing logged in the window) is drawn as a line through the middle.
+                let spread = maxPoint - minPoint
+                let progress = spread > 0 ? (item.element.amount - minPoint) / spread : 0.5
 
                 let pathHeight = progress * height
 
@@ -119,7 +123,7 @@ struct LineGraph: View {
                                 .foregroundColor(Color.SubtitleText)
                         }
 
-                        Text(currentPlot?.amountString ?? "")
+                        Text(currentPlot.map { MoneyFormat.compact($0.amount) } ?? "")
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .foregroundColor(Color.PrimaryText)
                     }
@@ -182,7 +186,9 @@ struct LineGraph: View {
                 let translation = value.location.x
 
                 // Getting index...
-                let index = max(min(Int((translation / width).rounded() + 1), data.count - 1), 0)
+                guard width > 0, !data.isEmpty, translation.isFinite else { return }
+                let index = max(min(Int((translation / width).rounded()), data.count - 1), 0)
+                guard index < points.count else { return }
 
                 currentPlot = data[index]
                 self.translation = translation

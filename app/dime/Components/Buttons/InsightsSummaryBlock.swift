@@ -8,9 +8,11 @@
 import Foundation
 import SwiftUI
 
+// Full-width Income / Expenses tile of the Net view. Takes the number, not a string,
+// so the amount is grouped and shrinks to the compact form instead of being cut off.
 struct InsightsSummaryBlockView: View {
     let income: Bool
-    let amountString: String
+    let amount: Double
     let showOverlay: Bool
     var action: () -> Void
 
@@ -19,40 +21,40 @@ struct InsightsSummaryBlockView: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: income ? "arrow.up.right" : "arrow.down.right")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(color)
-                .padding(5)
-                .frame(width: 30, height: 30)
-                .background(color.opacity(0.23), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .padding(.horizontal, 3)
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: income ? "arrow.up.right" : "arrow.down.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(color)
+                    .frame(width: 36, height: 36)
+                    .background(color.opacity(0.23), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 0) {
                 Text(income ? "Income" : "Expenses")
-                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                    .font(.system(.body, design: .rounded).weight(.semibold))
                     .lineLimit(1)
-                    .foregroundColor(Color.SubtitleText)
-
-                Text(amountString)
-                    .font(.system(.title3, design: .rounded).weight(.medium))
                     .foregroundColor(Color.PrimaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+
+                Spacer(minLength: 8)
+
+                AmountText(amount, role: .row, sign: .never)
+                    .layoutPriority(1)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(.footnote, design: .rounded).weight(.bold))
+                    .foregroundColor(Color.SubtitleText)
             }
-        }
-        .padding(7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            self.action()
-        }
-        .background(Color.TertiaryBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            if showOverlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.SubtitleText.opacity(0.7), lineWidth: 1.3)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .background(Color.TertiaryBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                if showOverlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.Outline, lineWidth: 1.3)
+                }
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(InsightsPressStyle())
     }
 }
