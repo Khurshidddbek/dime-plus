@@ -8,12 +8,108 @@
 import Foundation
 import SwiftUI
 
-// Custom View....
+/// The small graph under the Log header. It shows how the header number built up over the
+/// selected period: it starts at 0 on the first day and ends exactly on the big number.
+enum LogGraphSeries {
+    /// rows: LogFeed.current (newest first). insightsType: 1 net, 2 income, 3 spent.
+    /// timeframe: 1 today (by hour), 2 week and 3 month (by day), 4 year and 5 all time (by month).
+    static func build(rows: [LogRowModel], insightsType: Int, timeframe: Int, now: Date = Date.now) -> [LineGraphDataPoint] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
+        calendar.minimumDaysInFirstWeek = 4
+
+        let start: Date
+
+        if let periodStart = LogFeed.periodStart(timeframe: timeframe, now: now) {
+            start = periodStart
+        } else {
+            guard let oldest = rows.last?.date else {
+                return []
+            }
+
+            start = calendar.dateInterval(of: .month, for: oldest)?.start ?? oldest
+        }
+
+        let step: Calendar.Component
+        switch timeframe {
+        case 1:
+            step = .hour
+        case 2, 3:
+            step = .day
+        default:
+            step = .month
+        }
+
+        var bucketStarts = [start]
+        var cursor = start
+
+        // The cap only guards against a broken calendar; 400 months is 33 years.
+        while bucketStarts.count < 400,
+              let next = calendar.date(byAdding: step, value: 1, to: cursor),
+              next <= now,
+              next > cursor {
+            bucketStarts.append(next)
+            cursor = next
+        }
+
+        var sums = Array(repeating: 0.0, count: bucketStarts.count)
+        var bucket = 0
+
+        // Same rows and the same cut as LogFeed.totals, so the line ends on the header number.
+        for row in rows.prefix(while: { $0.date >= start }).reversed() {
+            let value: Double
+
+            switch insightsType {
+            case 2:
+                guard row.income else { continue }
+                value = row.amount
+            case 3:
+                guard !row.income else { continue }
+                value = row.amount
+            default:
+                value = row.signedAmount
+            }
+
+            while bucket + 1 < bucketStarts.count, row.date >= bucketStarts[bucket + 1] {
+                bucket += 1
+            }
+
+            sums[bucket] += value
+        }
+
+        var points = [LineGraphDataPoint(date: start, amount: 0)]
+        var running = 0.0
+
+        for index in bucketStarts.indices {
+            running += sums[index]
+            points.append(LineGraphDataPoint(date: bucketStarts[index], amount: running))
+        }
+
+        return points
+    }
+
+    /// The label under a point: hour for today, day for week and month, month for longer periods.
+    static func label(for date: Date, timeframe: Int) -> String {
+        switch timeframe {
+        case 1:
+            return date.formatted(.dateTime.hour().minute())
+        case 2, 3:
+            return date.formatted(.dateTime.day().month(.abbreviated))
+        case 4:
+            return date.formatted(.dateTime.month(.abbreviated))
+        default:
+            return date.formatted(.dateTime.month(.abbreviated).year())
+        }
+    }
+}
+
 struct LineGraph: View {
+    /// The first point is the 0 the period starts from, then one point per hour, day or month.
     var data: [LineGraphDataPoint]
-    var green: Bool
-    var type: Int
-    var range: Int
+    var color: Color
+    var timeframe: Int
+    var sign: MoneySign
+    var showsZeroLine: Bool
 
     @State var currentPlot: LineGraphDataPoint?
 
@@ -21,190 +117,117 @@ struct LineGraph: View {
 
     @State var showPlot = false
 
-    @State var translation: CGFloat = 0
-
     @GestureState var isDrag: Bool = false
 
-    var color: Color {
-        return green ? Color.IncomeGreen : Color.AlertRed
-    }
-
-    var overlayColor: Color {
-        if let plot = currentPlot {
-            let index = data.firstIndex(of: plot) ?? 0
-
-            if data.count - range <= index {
-                return color
-            } else {
-                return Color.Outline
-            }
-        } else {
-            return color
-        }
-    }
-
-    // Animating Graph
     @State var graphProgress: CGFloat = 0
 
-    func getGradient(totalPoints: Double, range: Double) -> Gradient {
-        // A single point has no span: keep the stops inside 0...1 instead of dividing by zero.
-        let rawLocation = totalPoints > 1 ? 1 - (range - 1) / (totalPoints - 1) : 0
-        let centreLocation = min(max(rawLocation, 0.01), 1)
-        let leftLocation = centreLocation - 0.01
-
-        return Gradient(stops: [Gradient.Stop(color: Color.Outline, location: leftLocation),
-                                Gradient.Stop(color: color, location: centreLocation)])
-    }
+    private let tooltipWidth: CGFloat = 104
+    // Keeps the stroke and the end dot inside the frame.
+    private let verticalInset: CGFloat = 4
 
     var body: some View {
         GeometryReader { proxy in
+            let fullHeight = proxy.size.height
+            let height = max(fullHeight - verticalInset * 2, 1)
+            let step = data.count > 1 ? proxy.size.width / CGFloat(data.count - 1) : 0
+            let values = data.map { $0.amount }
 
-            let height = proxy.size.height
-            let width = data.count > 1 ? (proxy.size.width) / CGFloat(data.count - 1) : 0
-            let dataValues = data.map { $0.amount }
+            // 0 is always in range: the line starts there.
+            let maxPoint = max(values.max() ?? 0, 0)
+            let minPoint = min(values.min() ?? 0, 0)
+            let spread = maxPoint - minPoint
 
-            let maxPoint = (dataValues.max() ?? 0.0)
-            let minPoint = dataValues.min() ?? 0.0
-
-            let points = data.enumerated().compactMap { item -> CGPoint in
-
-                // A flat series (nothing logged in the window) is drawn as a line through the middle.
-                let spread = maxPoint - minPoint
-                let progress = spread > 0 ? (item.element.amount - minPoint) / spread : 0.5
-
-                let pathHeight = progress * height
-
-                // width..
-                let pathWidth = width * CGFloat(item.offset)
-
-                // Since we need peak to top not bottom...
-                return CGPoint(x: pathWidth, y: -pathHeight + height)
+            let yFor: (Double) -> CGFloat = { value in
+                let progress = spread > 0 ? (value - minPoint) / spread : 0.5
+                return verticalInset + height - CGFloat(progress) * height
             }
 
-            ZStack {
-                //
-                AnimatedGraphPath(progress: graphProgress, points: points)
-                    .fill(
-                        // Gradient...
-                        LinearGradient(gradient: getGradient(totalPoints: Double(data.count), range: Double(range)), startPoint: .leading, endPoint: .trailing)
-                    )
+            let points = data.enumerated().map { item in
+                CGPoint(x: step * CGFloat(item.offset), y: yFor(item.element.amount))
+            }
 
-//                 Path Bacground Coloring...
-//                FillBG()
-//                // Clipping the shape...
-//                    .clipShape(
-//
-//                        Path{path in
-//
-//                            // drawing the points..
-//                            path.move(to: CGPoint(x: 0, y: 0))
-//
-//                            path.addLines(points)
-//
-//                            path.addLine(to: CGPoint(x: proxy.size.width, y: height))
-//
-//                            path.addLine(to: CGPoint(x: 0, y: height))
-//                        }
-//                    )
-//                    .opacity(graphProgress)
-//
+            ZStack(alignment: .topLeading) {
+                if showsZeroLine && spread > 0 {
+                    let zeroY = yFor(0)
+
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: zeroY))
+                        path.addLine(to: CGPoint(x: proxy.size.width, y: zeroY))
+                    }
+                    .stroke(Color.Outline, style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [2, 4]))
+                }
+
+                AnimatedGraphPath(progress: graphProgress, points: points)
+                    .fill(color)
+
+                if let last = points.last, points.count > 1 {
+                    Circle()
+                        .fill(color)
+                        .overlay(Circle().stroke(Color.PrimaryBackground, lineWidth: 2))
+                        .frame(width: 9, height: 9)
+                        .position(last)
+                        .opacity(graphProgress >= 1 ? 1 : 0)
+                }
             }
             .overlay(
-                // Drag Indiccator...
                 VStack(spacing: 0) {
                     VStack(spacing: 1) {
-                        if type < 4 {
-                            Text(currentPlot?.dateString ?? "")
-                                .font(.system(size: 10, weight: .medium, design: .rounded))
-                                .foregroundColor(Color.SubtitleText)
-                        } else {
-                            Text(currentPlot?.monthString ?? "")
-                                .font(.system(size: 10, weight: .medium, design: .rounded))
-                                .foregroundColor(Color.SubtitleText)
-                        }
+                        Text(currentPlot.map { LogGraphSeries.label(for: $0.date, timeframe: timeframe) } ?? "")
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.SubtitleText)
 
-                        Text(currentPlot.map { MoneyFormat.compact($0.amount) } ?? "")
+                        Text(currentPlot.map { MoneyFormat.compact($0.amount, sign: sign) } ?? "")
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .foregroundColor(Color.PrimaryText)
                     }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .frame(height: 33)
                     .padding(.horizontal, 7)
                     .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 6))
                     .padding(.bottom, 4)
-//                    Text(currentPlot?.dateString ?? "")
-//                        .font(.caption.bold())
-//                        .foregroundColor(Color.PrimaryText)
-//                        .padding(.vertical,6)
-//                        .frame(width: 100)
-//                        .background(Color.SecondaryBackground,in: Capsule())
-//                        .offset(x: translation < 10 ? 30 : 0)
-//                        .offset(x: translation > (proxy.size.width - 60) ? -30 : 0)
-//
-//                    Rectangle()
-//                        .fill(Color.SecondaryBackground)
-//                        .frame(width: 1,height: 25)
 
                     DottedLine()
-
                         .stroke(style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                         .frame(width: 2.5, height: 25)
-                        .foregroundColor(overlayColor)
+                        .foregroundColor(color)
 
                     Circle()
                         .stroke(Color.PrimaryBackground, lineWidth: 2.5)
-                        .background(Circle().fill(overlayColor))
+                        .background(Circle().fill(color))
                         .frame(width: 14, height: 11)
-//                    Circle()
-//                        .fill(color)
-
-//                        .overlay(
-//
-//                            Circle()
-//                                .fill(Color.DarkIcon.opacity(0.85))
-//                                .frame(width: 6.5, height: 6.5)
-//                        )
-
-//                    Rectangle()
-//                        .fill(Color.SecondaryBackground)
-//                        .frame(width: 1,height: 50)
                 }
-                // Fixed Frame..
-                // For Gesture Calculation...
-                .frame(width: 80)
-                // 170 / 2 = 85 - 15 => circle ring size...
-                .offset(y: 6)
+                .frame(width: tooltipWidth)
+                .offset(y: 5.5)
                 .offset(offset)
-                .opacity(showPlot ? 1 : 0),
+                .opacity(showPlot ? 1 : 0)
+                .allowsHitTesting(false),
 
                 alignment: .bottomLeading
             )
             .contentShape(Rectangle())
             .gesture(DragGesture().onChanged { value in
+                let location = value.location.x
 
-                withAnimation { showPlot = true }
-
-                let translation = value.location.x
-
-                // Getting index...
-                guard width > 0, !data.isEmpty, translation.isFinite else { return }
-                let index = max(min(Int((translation / width).rounded()), data.count - 1), 0)
+                // Point 0 is the starting 0, the tooltip begins at the first real hour, day or month.
+                guard step > 0, data.count > 1, location.isFinite else { return }
+                let index = max(min(Int((location / step).rounded()), data.count - 1), 1)
                 guard index < points.count else { return }
 
-                currentPlot = data[index]
-                self.translation = translation
+                if currentPlot != data[index] {
+                    Haptics.selection()
+                }
 
-                // removing half width...
-                offset = CGSize(width: points[index].x - 40, height: points[index].y - height)
+                withAnimation { showPlot = true }
+                currentPlot = data[index]
+                offset = CGSize(width: points[index].x - tooltipWidth / 2, height: points[index].y - fullHeight)
 
             }.onEnded { _ in
-
                 withAnimation { showPlot = false }
-
-            }.updating($isDrag, body: { _, out, _ in
+            }.updating($isDrag) { _, out, _ in
                 out = true
-            }))
+            })
         }
-        .padding(.horizontal, 10)
         .onChange(of: isDrag) { _ in
             if !isDrag {
                 showPlot = false
@@ -218,9 +241,6 @@ struct LineGraph: View {
             }
         }
         .onChange(of: data) { _ in
-
-            // MARK: ReAnimating When ever Plot Data Updates
-
             graphProgress = 0
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation(.easeInOut(duration: 1.2)) {
@@ -229,24 +249,6 @@ struct LineGraph: View {
             }
         }
     }
-
-//    @ViewBuilder
-//    func FillBG()->some View{
-//        let color = green ? Color.IncomeGreen : Color.AlertRed
-//        Color.red
-    ////        LinearGradient(colors: [
-    ////
-    ////            color
-    ////                .opacity(0.3),
-    ////            color
-    ////                .opacity(0.2),
-    ////            color
-    ////                .opacity(0.1)]
-    ////            + Array(repeating: color
-    ////                .opacity(0.1), count: 4)
-    ////            + Array(repeating:                     Color.clear, count: 2)
-    ////            , startPoint: .top, endPoint: .bottom)
-//    }
 }
 
 // MARK: Animated Path
@@ -261,10 +263,9 @@ struct AnimatedGraphPath: Shape {
 
     func path(in _: CGRect) -> Path {
         Path { path in
+            guard let first = points.first else { return }
 
-            // drawing the points..
-            path.move(to: CGPoint(x: 0, y: 0))
-
+            path.move(to: first)
             path.addLines(points)
         }
         .trimmedPath(from: 0, to: progress)

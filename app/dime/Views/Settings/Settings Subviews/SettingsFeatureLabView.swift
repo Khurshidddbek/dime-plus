@@ -17,7 +17,7 @@ struct SettingsGoofyView: View {
   //    @AppStorage("chromatic", store: UserDefaults.appGroup) var chromatic: Bool = false
 
   @AppStorage("logViewLineGraph", store: UserDefaults.appGroup)
-  var lineGraph: Bool = false
+  var lineGraph: Bool = true
 
   @AppStorage("budgetViewStyle", store: UserDefaults.appGroup)
   var budgetRows: Bool = false

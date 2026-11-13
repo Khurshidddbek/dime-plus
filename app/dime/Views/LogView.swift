@@ -256,45 +256,35 @@ struct LogInsightsView: View {
     @AppStorage("logInsightsTimeFrame", store: UserDefaults.appGroup) var timeframe = 2
     @AppStorage("logInsightsType", store: UserDefaults.appGroup) var insightsType = 1
 
-    @AppStorage("logViewLineGraph", store: UserDefaults.appGroup) var lineGraph: Bool = false
+    @AppStorage("logViewLineGraph", store: UserDefaults.appGroup) var lineGraph: Bool = true
 
-    var range: Int {
-        var calendar = Calendar(identifier: .gregorian)
+    // The Feature Lab switch reads the same key with its own default: registering it once
+    // makes both screens agree that the graph is on until the user turns it off.
+    private static let registerDefaults: Void = {
+        UserDefaults.appGroup.register(defaults: ["logViewLineGraph": true])
+    }()
 
-        calendar.firstWeekday = UserDefaults.appGroup.storedFirstWeekday
-        calendar.minimumDaysInFirstWeek = 4
-
-        if timeframe == 3 {
-            let dateComponents = calendar.dateComponents([.month, .year], from: Date.now)
-
-            let thisMonth = calendar.date(from: dateComponents) ?? Date.now
-            let numberOfDays = calendar.dateComponents([.day], from: thisMonth, to: Date.now)
-
-            return (numberOfDays.day ?? 0) + 1
-        } else if timeframe == 4 {
-            let dateComponents = calendar.dateComponents([.year], from: Date.now)
-
-            let thisYear = calendar.date(from: dateComponents) ?? Date.now
-
-            let numberOfMonths = calendar.dateComponents([.month], from: thisYear, to: Date.now)
-
-            return (numberOfMonths.month ?? 0) + 1
-        } else {
-            let dateComponents = calendar.dateComponents([.weekOfYear, .yearForWeekOfYear], from: Date.now)
-            let thisWeek = calendar.date(from: dateComponents) ?? Date.now
-            let numberOfDays = calendar.dateComponents([.day], from: thisWeek, to: Date.now)
-
-            return (numberOfDays.day ?? 0) + 1
-        }
+    init() {
+        _ = LogInsightsView.registerDefaults
     }
 
     var headingText: String {
         if insightsType == 1 {
-            return "Net total"
+            return "Net total (log header)"
         } else if insightsType == 2 {
             return "Earned"
         } else {
             return "Spent"
+        }
+    }
+
+    var graphCaption: String {
+        if insightsType == 1 {
+            return "How the total changed"
+        } else if insightsType == 2 {
+            return "How income grew"
+        } else {
+            return "How spending grew"
         }
     }
 
@@ -303,7 +293,7 @@ struct LogInsightsView: View {
         let amount = insightsType == 1 ? totals.net : (insightsType == 2 ? totals.income : totals.spent)
         let timeframeTitle = subtitleText[min(max(timeframe, 1), subtitleText.count) - 1]
 
-        VStack(spacing: -3) {
+        VStack(spacing: 0) {
             VStack(spacing: 2) {
                 HStack(spacing: 4) {
                     Text(LocalizedStringKey(headingText))
@@ -317,7 +307,7 @@ struct LogInsightsView: View {
                             .padding(2)
                             .padding(.horizontal, 6)
                             .font(.system(.body, design: .rounded).weight(.medium))
-                            .foregroundColor(Color.PrimaryText.opacity(9))
+                            .foregroundColor(Color.PrimaryText.opacity(0.9))
                             .overlay(Capsule().stroke(Color.Outline, lineWidth: 1.3))
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
@@ -339,16 +329,17 @@ struct LogInsightsView: View {
                 // Grouped and never cut: the full value shrinks instead of going compact.
                 AmountText(amount, role: .hero, sign: insightsType == 1 ? .always : .never, fit: .fullOnly, animated: true)
                     .frame(maxWidth: .infinity)
+                    .accessibilityHint(insightsType == 1 ? Text("Income minus expenses") : Text(""))
             }
             .padding(.horizontal, 7)
             .padding(.bottom, 7)
             .contentShape(Rectangle())
             .contextMenu {
-                if insightsType != 3 {
+                if insightsType != 1 {
                     Button {
-                        insightsType = 3
+                        insightsType = 1
                     } label: {
-                        Label("Total Spent", systemImage: "minus")
+                        Label("Income minus expenses", systemImage: "plus.forwardslash.minus")
                     }
                 }
 
@@ -356,15 +347,15 @@ struct LogInsightsView: View {
                     Button {
                         insightsType = 2
                     } label: {
-                        Label("Total Income", systemImage: "plus")
+                        Label("Only income", systemImage: "plus")
                     }
                 }
 
-                if insightsType != 1 {
+                if insightsType != 3 {
                     Button {
-                        insightsType = 1
+                        insightsType = 3
                     } label: {
-                        Label("Net Total", systemImage: "alternatingcurrent")
+                        Label("Only expenses", systemImage: "minus")
                     }
                 }
 
@@ -375,42 +366,81 @@ struct LogInsightsView: View {
                 }
             }
 
-            if totals.spent != 0 && totals.income != 0 && insightsType == 1 {
-                HStack {
-                    AmountText(totals.income, size: 20, relativeTo: .title2, sign: .plus, fit: .fullOnly, color: Color.IncomeGreen)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+            // The two parts of the big number, each with a plain caption, so "net" needs no explaining.
+            if insightsType == 1 && (totals.spent != 0 || totals.income != 0) {
+                HStack(alignment: .bottom, spacing: 12) {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text("Income")
+                            .font(.system(.caption, design: .rounded).weight(.medium))
+                            .foregroundColor(Color.SubtitleText)
+                            .lineLimit(1)
+
+                        AmountText(totals.income, size: 20, relativeTo: .title2, sign: .plus, fit: .fullOnly, color: Color.IncomeGreen)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
 
                     DottedLine()
                         .stroke(style: StrokeStyle(lineWidth: 1.7, lineCap: .round))
-                        .frame(width: 1.7, height: 15)
+                        .frame(width: 1.7, height: 30)
                         .foregroundColor(Color.Outline)
 
-                    AmountText(totals.spent, size: 20, relativeTo: .title2, sign: .minus, fit: .fullOnly, color: Color.AlertRed)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Expenses")
+                            .font(.system(.caption, design: .rounded).weight(.medium))
+                            .foregroundColor(Color.SubtitleText)
+                            .lineLimit(1)
+
+                        AmountText(totals.spent, size: 20, relativeTo: .title2, sign: .minus, fit: .fullOnly, color: Color.AlertRed)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.bottom, 13)
+                .padding(.bottom, 10)
             }
 
             if lineGraph {
-                let lineGraphData = feed.lineGraph(insightsType: insightsType, timeframe: timeframe)
+                let points = LogGraphSeries.build(rows: feed.current, insightsType: insightsType, timeframe: timeframe)
 
-                LineGraph(data: lineGraphData, green: isGreen(lineGraphData), type: timeframe, range: range)
-                    .frame(height: 25)
-                    .padding(.horizontal, 60)
-                    .padding(.top, 16)
+                if points.count > 1, let first = points.first {
+                    let endValue = points.last?.amount ?? 0
+                    let graphColor = insightsType == 3 || (insightsType == 1 && endValue < 0) ? Color.AlertRed : Color.IncomeGreen
+
+                    VStack(spacing: 6) {
+                        LineGraph(data: points, color: graphColor, timeframe: timeframe,
+                                  sign: insightsType == 1 ? .always : .automatic, showsZeroLine: insightsType == 1)
+                            .frame(height: 34)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(Text(LocalizedStringKey(graphCaption)))
+                            .accessibilityValue(MoneyFormat.spoken(endValue, sign: insightsType == 1 ? .always : .automatic))
+
+                        HStack(spacing: 6) {
+                            Text(LogGraphSeries.label(for: first.date, timeframe: timeframe))
+
+                            Spacer(minLength: 0)
+
+                            Text(LocalizedStringKey(graphCaption))
+                                .layoutPriority(-1)
+
+                            Spacer(minLength: 0)
+
+                            if timeframe == 1 {
+                                Text(LogGraphSeries.label(for: Date.now, timeframe: 1))
+                            } else {
+                                Text("today")
+                            }
+                        }
+                        .font(.system(.caption2, design: .rounded).weight(.medium))
+                        .foregroundColor(Color.SubtitleText)
+                        .lineLimit(1)
+                        .accessibilityHidden(true)
+                    }
+                    .padding(.horizontal, 40)
+                    .padding(.top, 14)
+                }
             }
         }
         .padding([.bottom, .horizontal], 20)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        .frame(height: lineGraph ? 240 : 170)
-    }
-
-    func isGreen(_ data: [LineGraphDataPoint]) -> Bool {
-        if insightsType == 1 {
-            return (data.first?.amount ?? 0.0) < (data.last?.amount ?? 0.0)
-        }
-
-        return insightsType == 2
+        .frame(minHeight: lineGraph ? 240 : 170)
     }
 }
 
