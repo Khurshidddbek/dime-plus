@@ -20,10 +20,9 @@ struct InsightsHeadlineCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if showsFlowSwitch {
-                InsightsSegmentedControl(items: flowItems, selection: page.flow.rawValue, fillsWidth: false) { value in
+                InsightsSegmentedControl(items: flowItems, selection: page.flow.rawValue, fillsWidth: true) { value in
                     onFlow(InsightsFlow(rawValue: value) ?? .expense)
                 }
-                .padding(.leading, -3)
             } else {
                 Text(verbatim: InsightsFormat.flowTitle(page.flow))
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))

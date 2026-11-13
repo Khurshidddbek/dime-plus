@@ -206,7 +206,8 @@ struct LogRowView: View, Equatable {
                         .font(.system(.body, design: .rounded).weight(.medium))
                         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                         .foregroundColor(future ? Color.SubtitleText : Color.PrimaryText)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(subtitle)
                         .font(.system(.subheadline, design: .rounded).weight(.medium))
@@ -216,7 +217,7 @@ struct LogRowView: View, Equatable {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // The amount takes the width it needs first, the note gives way.
+                // The amount takes the width it needs first, the note wraps to a second line and only then truncates.
                 AmountText(row.amount, role: .row, sign: amountSign, fit: .fullOnly, color: amountColor)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     .layoutPriority(1)

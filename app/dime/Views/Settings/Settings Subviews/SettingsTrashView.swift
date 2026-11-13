@@ -146,17 +146,28 @@ struct SettingsTrashView: View {
         let title = note.isEmpty ? (item.category?.name ?? String(localized: "No note")) : note
         let days = trash.daysLeft(for: item)
 
-        return HStack(spacing: 10) {
+        // Title and amount share the first line, the date and the deletion info get the whole width under them.
+        return HStack(alignment: .top, spacing: 10) {
             Text(item.category?.emoji ?? "")
                 .font(.system(.body, design: .rounded))
                 .frame(width: 28)
+                .padding(.top, 6)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(.body, design: .rounded))
-                    .foregroundColor(Color.PrimaryText)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .top, spacing: 8) {
+                    Text(title)
+                        .font(.system(.body, design: .rounded))
+                        .foregroundColor(Color.PrimaryText)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    AmountText(
+                        item.snapshot.amount, role: .caption, sign: item.snapshot.income ? .plus : .minus, fit: .fullOnly,
+                        color: item.snapshot.income ? Color.IncomeGreen : Color.PrimaryText
+                    )
+                    .layoutPriority(1)
+                }
 
                 if let date = item.snapshot.date {
                     Text(shortDate(date))
@@ -172,12 +183,7 @@ struct SettingsTrashView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            AmountText(
-                item.snapshot.amount, role: .caption, sign: item.snapshot.income ? .plus : .minus, fit: .fullOnly,
-                color: item.snapshot.income ? Color.IncomeGreen : Color.PrimaryText
-            )
-            .layoutPriority(1)
+            .padding(.vertical, 6)
 
             Menu {
                 Button {
