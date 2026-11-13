@@ -134,16 +134,33 @@ struct LogRowView: View, Equatable {
         abs(offset) > LogRowView.screenWidth * 0.42
     }
 
+    // The category is the short, predictable title; the note is secondary detail on the line below.
+    var title: String {
+        row.categoryName.isEmpty ? row.note : row.categoryName
+    }
+
+    var noteDetail: String {
+        let trimmed = row.rawNote.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmed.isEmpty || trimmed.compare(title, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame {
+            return ""
+        }
+
+        return trimmed.replacingOccurrences(of: "\n", with: " ")
+    }
+
     var subtitle: String {
+        let when: String
+
         if future {
-            return Fmt.uppercased(.dayMonth, from: row.upcomingDate)
+            when = Fmt.uppercased(.dayMonth, from: row.upcomingDate)
+        } else if style.swapTimeLabel {
+            when = ""
+        } else {
+            when = Fmt.time(row.date)
         }
 
-        if style.swapTimeLabel {
-            return row.categoryName
-        }
-
-        return Fmt.time(row.date)
+        return [when, noteDetail].filter { !$0.isEmpty }.joined(separator: "  \u{00B7}  ")
     }
 
     var amountSign: MoneySign {
@@ -201,22 +218,14 @@ struct LogRowView: View, Equatable {
                         }
                     }
 
-                // The note gets the full width on top; time and amount share the line below,
-                // so a long note never competes with the amount for space.
+                // Two fixed lines, so every row has the same height: category and amount on top,
+                // time and note below across the full width, where the note has room to be read.
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(row.note)
-                        .font(.system(.body, design: .rounded).weight(.medium))
-                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                        .foregroundColor(future ? Color.SubtitleText : Color.PrimaryText)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(subtitle)
-                            .font(.system(.subheadline, design: .rounded).weight(.medium))
-                            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
-                            .foregroundColor(future ? Color.EvenLighterText : Color.SubtitleText)
+                        Text(title)
+                            .font(.system(.body, design: .rounded).weight(.medium))
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                            .foregroundColor(future ? Color.SubtitleText : Color.PrimaryText)
                             .lineLimit(1)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -224,6 +233,13 @@ struct LogRowView: View, Equatable {
                             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                             .layoutPriority(1)
                     }
+
+                    Text(subtitle)
+                        .font(.system(.subheadline, design: .rounded).weight(.medium))
+                        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+                        .foregroundColor(future ? Color.EvenLighterText : Color.SubtitleText)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(.vertical, 8)
