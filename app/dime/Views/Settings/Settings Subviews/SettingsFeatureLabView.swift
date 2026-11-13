@@ -11,22 +11,22 @@ import SwiftUI
 struct SettingsGoofyView: View {
   @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
 
-  @AppStorage("confetti", store: UserDefaults(suiteName: "group.com.rafaelsoh.dime")) var confetti:
+  @AppStorage("confetti", store: UserDefaults.appGroup) var confetti:
     Bool = false
 
-  //    @AppStorage("chromatic", store: UserDefaults(suiteName: "group.com.rafaelsoh.dime")) var chromatic: Bool = false
+  //    @AppStorage("chromatic", store: UserDefaults.appGroup) var chromatic: Bool = false
 
-  @AppStorage("logViewLineGraph", store: UserDefaults(suiteName: "group.com.rafaelsoh.dime"))
+  @AppStorage("logViewLineGraph", store: UserDefaults.appGroup)
   var lineGraph: Bool = false
 
-  @AppStorage("budgetViewStyle", store: UserDefaults(suiteName: "group.com.rafaelsoh.dime"))
+  @AppStorage("budgetViewStyle", store: UserDefaults.appGroup)
   var budgetRows: Bool = false
 
-  @AppStorage("swapTimeLabel", store: UserDefaults(suiteName: "group.com.rafaelsoh.dime"))
+  @AppStorage("swapTimeLabel", store: UserDefaults.appGroup)
   var swapTimeLabel: Bool = false
 
   @AppStorage(
-    "showTransactionRecommendations", store: UserDefaults(suiteName: "group.com.rafaelsoh.dime"))
+    "showTransactionRecommendations", store: UserDefaults.appGroup)
   var showRecommendations: Bool = false
 
   @Namespace var animation
