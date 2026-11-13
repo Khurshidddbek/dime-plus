@@ -5,6 +5,7 @@
 //  Created by Rafael Soh on 15/7/23.
 //
 
+import CoreData
 import SwiftUI
 
 struct PickerStyle: ViewModifier {
@@ -41,9 +42,6 @@ struct BrandNewBudgetView: View {
     @State var progress = 1
     var initialProgress: Double
 
-    @State var showToast: Bool = false
-    @State var toastMessage: String = "Missing Category"
-
     // stage one (ignore if editing), overall budget or category budget
     @State var categoryBudget: Bool = false
     var overallBudgetCreated: Bool
@@ -76,7 +74,7 @@ struct BrandNewBudgetView: View {
     }
 
     var oneYearAgo: Date {
-        return Calendar.current.date(byAdding: .year, value: -1, to: Date.now)!
+        return Calendar.current.date(byAdding: .year, value: -1, to: Date.now) ?? Date.now
     }
 
     // stage 5
@@ -93,14 +91,11 @@ struct BrandNewBudgetView: View {
     @State private var priceString: String = "0"
 
     @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-    var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
-    }
+    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
+    @AppStorage("currencySymbolOverride", store: UserDefaults.appGroup) var symbolOverride: String = ""
 
     var amountPerDayString: String {
-        let numberFormatter = NumberFormatter()
-        numberFormatter.numberStyle = .currency
-        numberFormatter.currencyCode = currency
+        let settings = MoneySettings.resolve(currency: currency, showCents: showCents, symbolOverride: symbolOverride)
 
         let average: Double
 
@@ -112,9 +107,9 @@ struct BrandNewBudgetView: View {
             average = price / 365
         }
 
-        numberFormatter.maximumFractionDigits = 0
+        let amount = MoneyFormat.parts(average, settings: settings, fractionDigits: 0).text
 
-        return "~" + (numberFormatter.string(from: NSNumber(value: average)) ?? "$0") + " /day"
+        return String(localized: "~\(amount) /day")
     }
 
     // height of pickers
@@ -141,12 +136,13 @@ struct BrandNewBudgetView: View {
     }
 
     var instructions: [InstructionHeadings] {
+        // Plain strings are drawn as they are, so they are localised here.
         [
-            InstructionHeadings(title: "Indicate budget type", subtitle: "The overall budget tracks expenses across the board, while categorical budgets are tied to expenses of a particular type only."),
-            InstructionHeadings(title: "Select a category", subtitle: "Begin by linking this budget to an existing category."),
-            InstructionHeadings(title: "Choose a time frame", subtitle: "The budget will periodically refresh according to your preference."),
-            InstructionHeadings(title: "Pick a start date", subtitle: "Which day of the \(timeFrameString) do you want your budget to start from?"),
-            InstructionHeadings(title: "Set budget amount", subtitle: "Try your best to stay under this limit! Also, feel free to change this in the future.")
+            InstructionHeadings(title: String(localized: "Indicate budget type"), subtitle: String(localized: "The overall budget tracks expenses across the board, while categorical budgets are tied to expenses of a particular type only.")),
+            InstructionHeadings(title: String(localized: "Select a category"), subtitle: String(localized: "Begin by linking this budget to an existing category.")),
+            InstructionHeadings(title: String(localized: "Choose a time frame"), subtitle: String(localized: "The budget will periodically refresh according to your preference.")),
+            InstructionHeadings(title: String(localized: "Pick a start date"), subtitle: String(localized: "Which day of the \(timeFrameString) do you want your budget to start from?")),
+            InstructionHeadings(title: String(localized: "Set budget amount"), subtitle: String(localized: "Try your best to stay under this limit! Also, feel free to change this in the future."))
         ]
     }
 
@@ -208,23 +204,6 @@ struct BrandNewBudgetView: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay {
-                if showToast {
-                    HStack(spacing: 6.5) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                            .foregroundColor(Color.AlertRed)
-
-                        Text(toastMessage)
-                            .font(.system(.callout, design: .rounded).weight(.semibold))
-                            .foregroundColor(Color.AlertRed)
-                    }
-                    .padding(8)
-                    .background(Color.AlertRed.opacity(0.23), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    .transition(AnyTransition.opacity.combined(with: .move(edge: .top)))
-                    .frame(width: 250)
-                }
-            }
             .padding(.bottom, 50)
             .animation(.easeInOut, value: showBackButton)
 
@@ -542,13 +521,11 @@ struct BrandNewBudgetView: View {
             if progress < 5 {
                 Button {
                     if progress == 2 && selectedCategory == nil {
-                        showToast = true
-                        toastMessage = "Missing Category"
-                        UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        ToastCenter.shared.error(String(localized: "Missing Category"))
                         return
                     }
 
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.tap()
 
                     withAnimation(.interactiveSpring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.8)) {
                         if progress < 5 {
@@ -601,13 +578,13 @@ struct BrandNewBudgetView: View {
                         budgetTimeFrame = .day
                     case 2:
                         budgetTimeFrame = .week
-                        chosenDayWeek = Calendar.current.dateComponents([.weekday], from: unwrappedEditedBudget.startDate!).weekday!
+                        chosenDayWeek = Calendar.current.dateComponents([.weekday], from: unwrappedEditedBudget.wrappedDate).weekday ?? firstWeekday
                     case 3:
                         budgetTimeFrame = .month
-                        chosenDayMonth = Calendar.current.dateComponents([.day], from: unwrappedEditedBudget.startDate!).day!
+                        chosenDayMonth = Calendar.current.dateComponents([.day], from: unwrappedEditedBudget.wrappedDate).day ?? firstDayOfMonth
                     case 4:
                         budgetTimeFrame = .year
-                        chosenDayYear = unwrappedEditedBudget.startDate!
+                        chosenDayYear = unwrappedEditedBudget.wrappedDate
                     default:
                         budgetTimeFrame = .week
                     }
@@ -644,13 +621,13 @@ struct BrandNewBudgetView: View {
                         budgetTimeFrame = .day
                     case 2:
                         budgetTimeFrame = .week
-                        chosenDayWeek = Calendar.current.dateComponents([.weekday], from: unwrappedEditedMainBudget.startDate!).weekday!
+                        chosenDayWeek = Calendar.current.dateComponents([.weekday], from: unwrappedEditedMainBudget.wrappedDate).weekday ?? firstWeekday
                     case 3:
                         budgetTimeFrame = .month
-                        chosenDayMonth = Calendar.current.dateComponents([.day], from: unwrappedEditedMainBudget.startDate!).day!
+                        chosenDayMonth = Calendar.current.dateComponents([.day], from: unwrappedEditedMainBudget.wrappedDate).day ?? firstDayOfMonth
                     case 4:
                         budgetTimeFrame = .year
-                        chosenDayYear = unwrappedEditedMainBudget.startDate!
+                        chosenDayYear = unwrappedEditedMainBudget.wrappedDate
                     default:
                         budgetTimeFrame = .week
                     }
@@ -675,7 +652,8 @@ struct BrandNewBudgetView: View {
 //                    } else {
 //                        numbers1 = stringArray
 //                    }
-                } else {
+                } else if toEditBudget == nil {
+                    // Without this check the start day of an edited category budget was reset.
                     chosenDayWeek = firstWeekday
                     chosenDayMonth = firstDayOfMonth
                 }
@@ -689,14 +667,7 @@ struct BrandNewBudgetView: View {
                 NewCategoryAlert(income: Binding.constant(false), bottomSpacers: true, budgetMode: true)
             }
         }
-        .animation(.easeOut(duration: 0.2), value: showToast)
-        .onChange(of: showToast) { newValue in
-            if newValue {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    showToast = false
-                }
-            }
-        }
+        .toastHost()
     }
 
     @ViewBuilder
@@ -706,14 +677,10 @@ struct BrandNewBudgetView: View {
     }
 
     func submit() {
-        if price == 0 {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            showToast = true
-            toastMessage = "Missing Amount"
+        if price <= 0 || !price.isFinite {
+            ToastCenter.shared.error(String(localized: "Missing Amount"))
             return
         }
-
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
         let budgetType = getBudgetTypeInteger(budgetTimeFrame)
         let today = Calendar.current.startOfDay(for: Date.now)
@@ -729,12 +696,12 @@ struct BrandNewBudgetView: View {
 
             let dateComponents = calendar.dateComponents([.weekOfYear, .yearForWeekOfYear], from: today)
 
-            let sunday = calendar.date(from: dateComponents)!
+            let sunday = calendar.date(from: dateComponents) ?? today
 
-            let holdingDate = calendar.date(byAdding: .day, value: chosenDayWeek - 1, to: sunday)!
+            let holdingDate = calendar.date(byAdding: .day, value: chosenDayWeek - 1, to: sunday) ?? today
 
             if holdingDate > today {
-                let newHoldingDate = calendar.date(byAdding: .day, value: -7, to: holdingDate)!
+                let newHoldingDate = calendar.date(byAdding: .day, value: -7, to: holdingDate) ?? today
 
                 startDate = newHoldingDate
             } else {
@@ -745,12 +712,12 @@ struct BrandNewBudgetView: View {
 
             let dateComponents = calendar.dateComponents([.month, .year], from: today)
 
-            let startOfMonth = calendar.date(from: dateComponents)!
+            let startOfMonth = calendar.date(from: dateComponents) ?? today
 
-            let holdingDate = calendar.date(byAdding: .day, value: chosenDayMonth - 1, to: startOfMonth)!
+            let holdingDate = calendar.date(byAdding: .day, value: chosenDayMonth - 1, to: startOfMonth) ?? today
 
             if holdingDate > today {
-                let newHoldingDate = calendar.date(byAdding: .month, value: -1, to: holdingDate)!
+                let newHoldingDate = calendar.date(byAdding: .month, value: -1, to: holdingDate) ?? today
 
                 startDate = newHoldingDate
             } else {
@@ -766,8 +733,12 @@ struct BrandNewBudgetView: View {
             unwrappedEditedBudget.amount = price
             unwrappedEditedBudget.type = Int16(budgetType)
 
-            dataController.save()
+            // On a failed save the sheet stays open; the "Couldn't save" toast is automatic.
+            if dataController.save("edit budget").isFailure {
+                return
+            }
 
+            Haptics.success()
             dismiss()
 
             return
@@ -778,12 +749,17 @@ struct BrandNewBudgetView: View {
             unwrappedEditedMainBudget.amount = price
             unwrappedEditedMainBudget.type = Int16(budgetType)
 
-            dataController.save()
+            if dataController.save("edit overall budget").isFailure {
+                return
+            }
 
+            Haptics.success()
             dismiss()
 
             return
         }
+
+        let inserted: NSManagedObject
 
         if categoryBudget {
             let newBudget = Budget(context: moc)
@@ -797,15 +773,23 @@ struct BrandNewBudgetView: View {
             newBudget.dateCreated = Date.now
             newBudget.type = Int16(budgetType)
             newBudget.id = UUID()
+            inserted = newBudget
         } else {
             let newBudget = MainBudget(context: moc)
             newBudget.startDate = startDate
             newBudget.amount = price
+            newBudget.dateCreated = Date.now
             newBudget.type = Int16(budgetType)
+            inserted = newBudget
         }
 
-        dataController.save()
+        if dataController.save("new budget").isFailure {
+            // Taken back, otherwise a second tap on the checkmark would insert a twin.
+            moc.delete(inserted)
+            return
+        }
 
+        Haptics.success()
         dismiss()
     }
 
@@ -892,7 +876,7 @@ struct BrandNewBudgetView: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .ordinal
 
-        return formatter.string(from: number as NSNumber)!.replacingOccurrences(of: ".", with: "")
+        return (formatter.string(from: number as NSNumber) ?? "\(number)").replacingOccurrences(of: ".", with: "")
     }
 
     func getBudgetTypeInteger(_ budget: BudgetTimeFrame) -> Int {

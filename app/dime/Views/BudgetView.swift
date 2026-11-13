@@ -5,10 +5,135 @@
 //  Created by Rafael Soh on 20/5/22.
 //
 
+import CoreData
 import CrookedText
 import Foundation
 import Popovers
 import SwiftUI
+
+/// Budget arithmetic and wording shared by the four budget views.
+enum BudgetMath {
+    /// Rounded percent. A zero or broken budget amount gives 0 instead of trapping on Int(NaN).
+    static func percent(_ part: Double, of total: Double) -> Int {
+        guard total > 0, part.isFinite, total.isFinite else {
+            return 0
+        }
+
+        let value = (part / total * 100).rounded()
+
+        return Int(max(-9999, min(9999, value)))
+    }
+
+    /// Whole-sentence keys, so a translation can order the words its own way.
+    static func caption(over: Bool, type: Int16) -> String {
+        switch type {
+        case 1:
+            return over ? String(localized: "over today") : String(localized: "left today")
+        case 3:
+            return over ? String(localized: "over this month") : String(localized: "left this month")
+        case 4:
+            return over ? String(localized: "over this year") : String(localized: "left this year")
+        default:
+            return over ? String(localized: "over this week") : String(localized: "left this week")
+        }
+    }
+
+    /// Days in the period and days already gone, both never negative.
+    static func days(from start: Date, to end: Date, now: Date = Date.now) -> (total: Int, past: Int) {
+        let calendar = Calendar.current
+        let total = calendar.dateComponents([.day], from: start, to: end).day ?? 0
+        let past = calendar.dateComponents([.day], from: start, to: now).day ?? 0
+
+        return (max(0, total), max(0, past))
+    }
+
+    /// True when a context change involves something a budget card shows.
+    static func touchesBudgetData(_ notification: Notification) -> Bool {
+        guard let info = notification.userInfo else {
+            return false
+        }
+
+        if info[NSInvalidatedAllObjectsKey] != nil {
+            return true
+        }
+
+        for key in [NSInsertedObjectsKey, NSUpdatedObjectsKey, NSDeletedObjectsKey, NSRefreshedObjectsKey] {
+            guard let objects = info[key] as? Set<NSManagedObject> else {
+                continue
+            }
+
+            if objects.contains(where: { $0 is Transaction || $0 is Budget || $0 is MainBudget || $0 is Category }) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /// Deletes a category budget at once and offers a real undo (the budget is rebuilt from a value copy).
+    static func delete(_ budget: Budget, dataController: DataController) {
+        guard !budget.isDeleted, let context = budget.managedObjectContext else {
+            return
+        }
+
+        let record = BudgetRecord(budget)
+
+        context.delete(budget)
+
+        if dataController.save("delete budget").isFailure {
+            return
+        }
+
+        ToastCenter.shared.undo(String(localized: "Budget deleted")) {
+            let context = dataController.container.viewContext
+            let restored = Budget(context: context)
+            record.apply(to: restored)
+
+            if let categoryID = record.categoryID {
+                restored.category = dataController.findCategoryOrNil(withId: categoryID)
+            }
+
+            if restored.category == nil {
+                // A category budget cannot live without its category.
+                context.delete(restored)
+                ToastCenter.shared.error(String(localized: "Couldn't restore the budget"))
+                return
+            }
+
+            _ = dataController.save("restore budget")
+        }
+    }
+
+    /// Same for the overall budget.
+    static func delete(_ budget: MainBudget, dataController: DataController) {
+        guard !budget.isDeleted, let context = budget.managedObjectContext else {
+            return
+        }
+
+        let record = MainBudgetRecord(budget)
+
+        context.delete(budget)
+
+        if dataController.save("delete overall budget").isFailure {
+            return
+        }
+
+        ToastCenter.shared.undo(String(localized: "Budget deleted")) {
+            let context = dataController.container.viewContext
+            let request: NSFetchRequest<MainBudget> = MainBudget.fetchRequest()
+
+            // Only one overall budget may exist.
+            guard dataController.results(for: request).isEmpty else {
+                return
+            }
+
+            let restored = MainBudget(context: context)
+            record.apply(to: restored)
+
+            _ = dataController.save("restore overall budget")
+        }
+    }
+}
 
 struct BudgetView: View {
     @FetchRequest(sortDescriptors: []) private var categories: FetchedResults<Category>
@@ -75,8 +200,9 @@ struct ActualBudgetView: View {
 
     @Namespace var animation
 
-    var didSave = NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave) // the publisher
-    @AppStorage("UUID") var refreshID = UUID().uuidString
+    // Cards cache their totals in @State, so the list is rebuilt when budget data changes.
+    // Only the entities a card shows count, and nothing is written to UserDefaults any more.
+    @State private var refreshID = UUID().uuidString
 
     @State var date = Date.now
 
@@ -236,7 +362,11 @@ struct ActualBudgetView: View {
             }) { budget in
                 DeleteBudgetAlert(toDelete: budget)
             }
-            .onReceive(self.didSave) { _ in // the listener
+            .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextObjectsDidChange, object: moc)) { notification in
+                guard BudgetMath.touchesBudgetData(notification) else {
+                    return
+                }
+
                 withAnimation {
                     refreshID = UUID().uuidString
                 }
@@ -271,23 +401,14 @@ struct MainBudgetView: View {
             return ""
         }
 
-        switch budget.type {
-        case 1:
-            return String(localized: "today")
-        case 2:
-            return String(localized: "this week")
-        case 3:
-            return String(localized: "this month")
-        case 4:
-            return String(localized: "this year")
-        default:
-            return "this week"
-        }
+        return BudgetMath.caption(over: budgetAmount < totalSpent, type: budget.type)
     }
 
     @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-    var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
+    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
+    @AppStorage("currencySymbolOverride", store: UserDefaults.appGroup) var symbolOverride: String = ""
+    var moneySettings: MoneySettings {
+        MoneySettings.resolve(currency: currency, showCents: showCents, symbolOverride: symbolOverride)
     }
 
     var percentageOfDays: Double {
@@ -302,29 +423,28 @@ struct MainBudgetView: View {
             return Double(components.minute ?? 0) / 1440
         }
 
-        let components1 = calendar.dateComponents([.day], from: budget.wrappedDate, to: budget.endDate)
-        let numberOfDays = components1.day ?? 0
+        let days = BudgetMath.days(from: budget.wrappedDate, to: budget.endDate)
 
-        let components2 = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
-        let numberOfDaysPast = components2.day ?? 0
+        guard days.total > 0 else {
+            return 0.0
+        }
 
-        return Double(numberOfDaysPast) / Double(numberOfDays)
+        return Double(days.past) / Double(days.total)
     }
 
     var targetPercent: Double {
-        let calendar = Calendar.current
-
         if budget.isFault {
             return 0.0
         }
 
-        let components1 = calendar.dateComponents([.day], from: budget.wrappedDate, to: budget.endDate)
-        let numberOfDays = components1.day ?? 0
+        let days = BudgetMath.days(from: budget.wrappedDate, to: budget.endDate)
 
-        let components2 = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
-        let numberOfDaysPast = (components2.day ?? 0) + 1
+        // A zero-length period would give NaN, which then lands in an offset.
+        guard days.total > 0 else {
+            return 0.0
+        }
 
-        return Double(numberOfDays - numberOfDaysPast) / Double(numberOfDays)
+        return Double(days.total - (days.past + 1)) / Double(days.total)
     }
 
     var triangleOffset: (x: Double, y: Double) {
@@ -362,7 +482,7 @@ struct MainBudgetView: View {
 
     var percentString: String {
         if !budget.isFault {
-            return "\(Int(round(100 - (totalSpent / budgetAmount) * 100)))%"
+            return "\(100 - BudgetMath.percent(totalSpent, of: budgetAmount))%"
         } else {
             return ""
         }
@@ -370,7 +490,7 @@ struct MainBudgetView: View {
 
     var percentString1: String {
         if !budget.isFault {
-            return "\(Int(round((totalSpent / budgetAmount) * 100)))%"
+            return "\(BudgetMath.percent(totalSpent, of: budgetAmount))%"
         } else {
             return ""
         }
@@ -421,27 +541,23 @@ struct MainBudgetView: View {
                     BudgetDollarView(amount: difference, red: totalSpent >= budgetAmount, scale: 3, size: internalWidth)
                         .frame(width: internalWidth)
 
-                    Text("\(budgetAmount >= totalSpent ? "left" : "over") \(budgetType)")
+                    Text(budgetType)
                         .font(.system(.subheadline, design: .rounded).weight(.medium))
 //                        .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundColor(Color.SubtitleText)
                 }
             }
 
-            HStack {
-                if totalSpent < 1000 && budgetAmount < 1000 {
-                    Text("\(totalSpent, specifier: "%.2f")")
-                        .frame(width: 60, alignment: .leading)
-                    Spacer()
-                    Text("\(budgetAmount, specifier: "%.2f")")
-                        .frame(width: 60, alignment: .trailing)
-                } else {
-                    Text("\(Int(round(totalSpent)))")
-                        .frame(width: 60, alignment: .leading)
-                    Spacer()
-                    Text("\(Int(round(budgetAmount)))")
-                        .frame(width: 60, alignment: .trailing)
-                }
+            HStack(spacing: 8) {
+                Text(MoneyFormat.string(totalSpent, settings: moneySettings))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .accessibilityLabel(Text(MoneyFormat.spoken(totalSpent, settings: moneySettings)))
+                Spacer(minLength: 0)
+                Text(MoneyFormat.string(budgetAmount, settings: moneySettings))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .accessibilityLabel(Text(MoneyFormat.spoken(budgetAmount, settings: moneySettings)))
             }
             .font(.system(.caption2, design: .rounded).weight(.medium))
 //            .font(.system(size: 10, weight: .medium, design: .rounded))
@@ -495,7 +611,7 @@ struct MainBudgetView: View {
         soloBudget = solo
 
         let startPredicate = NSPredicate(format: "%K >= %@", #keyPath(Transaction.date), budget.wrappedDate as CVarArg)
-        let endPredicate = NSPredicate(format: "%K <= %@", #keyPath(Transaction.date), Date.now as CVarArg)
+        let endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), LogCutoff.startOfTomorrow() as CVarArg)
         let incomePredicate = NSPredicate(format: "income = %d", false)
 
         let andPredicate = NSCompoundPredicate(type: .and, subpredicates: [startPredicate, endPredicate, incomePredicate])
@@ -536,18 +652,7 @@ struct SingleBudgetView: View {
             return ""
         }
 
-        switch budget.type {
-        case 1:
-            return String(localized: "today")
-        case 2:
-            return String(localized: "this week")
-        case 3:
-            return String(localized: "this month")
-        case 4:
-            return String(localized: "this year")
-        default:
-            return "this week"
-        }
+        return BudgetMath.caption(over: budgetAmount < totalSpent, type: budget.type)
     }
 
     var timeLeft: String {
@@ -561,7 +666,7 @@ struct SingleBudgetView: View {
             if budget.type == 1 {
                 let components = calendar.dateComponents([.hour], from: budget.wrappedDate, to: Date.now)
 
-                return String(localized: "\(24 - components.hour!)h left")
+                return String(localized: "\(max(0, 24 - (components.hour ?? 0)))h left")
             } else if budget.type == 2 {
                 let components = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
 
@@ -599,18 +704,13 @@ struct SingleBudgetView: View {
         }
     }
 
-    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-    var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
-    }
-
     var difference: Double {
         return abs(budgetAmount - totalSpent)
     }
 
     var percentString: String {
         if !budget.isFault {
-            return "\(Int(round(100 - (totalSpent / budgetAmount) * 100)))%"
+            return "\(100 - BudgetMath.percent(totalSpent, of: budgetAmount))%"
         } else {
             return ""
         }
@@ -618,26 +718,25 @@ struct SingleBudgetView: View {
 
     var percentString1: String {
         if !budget.isFault {
-            return "\(Int(round((totalSpent / budgetAmount) * 100)))%"
+            return "\(BudgetMath.percent(totalSpent, of: budgetAmount))%"
         } else {
             return ""
         }
     }
 
     var targetPercent: Double {
-        let calendar = Calendar.current
-
         if budget.isFault {
             return 0.0
         }
 
-        let components1 = calendar.dateComponents([.day], from: budget.wrappedDate, to: budget.endDate)
-        let numberOfDays = components1.day ?? 0
+        let days = BudgetMath.days(from: budget.wrappedDate, to: budget.endDate)
 
-        let components2 = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
-        let numberOfDaysPast = components2.day ?? 0 + 1
+        guard days.total > 0 else {
+            return 0.0
+        }
 
-        return Double(numberOfDays - numberOfDaysPast) / Double(numberOfDays)
+        // Today counts as gone, same as on the overall gauge.
+        return Double(days.total - (days.past + 1)) / Double(days.total)
     }
 
     @Environment(\.colorScheme) var colorScheme
@@ -709,11 +808,14 @@ struct SingleBudgetView: View {
 
                         VStack(alignment: .trailing, spacing: -4) {
                             BudgetDollarView(amount: difference, red: totalSpent >= budgetAmount, scale: 1, size: 80)
+                                .layoutPriority(1)
 
-                            Text("\(budgetAmount >= totalSpent ? "left" : "over") \(budgetType)")
+                            Text(budgetType)
                                 .font(.system(.caption2, design: .rounded).weight(.medium))
                                 .foregroundColor(Color.SubtitleText)
                         }
+                        // The name on the left truncates before the amount shrinks.
+                        .layoutPriority(1)
                     }
                     .padding(10)
                     .background(colorScheme == .dark ? Color.Outline.opacity(0.2) : Color.Outline.opacity(0.35), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
@@ -736,12 +838,12 @@ struct SingleBudgetView: View {
                 .padding(.horizontal, 30)
                 .onChange(of: deletePopup) { _ in
                     if deletePopup {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        Haptics.tap()
                     }
                 }
                 .onChange(of: deleteConfirm) { _ in
                     if deleteConfirm {
-                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        Haptics.impact(.heavy)
                     }
                 }
                 .animation(.default, value: deletePopup)
@@ -763,8 +865,7 @@ struct SingleBudgetView: View {
 
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                                     withAnimation {
-                                        moc.delete(budget)
-                                        dataController.save()
+                                        BudgetMath.delete(budget, dataController: dataController)
                                     }
                                 }
 
@@ -824,13 +925,13 @@ struct SingleBudgetView: View {
                                     .font(.system(.caption2, design: .rounded).weight(.semibold))
 //                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
                                     .lineLimit(1)
-                                    .foregroundColor(totalSpent / budgetAmount > 1 ? Color("BudgetRed") : Color.IncomeGreen)
+                                    .foregroundColor(totalSpent > budgetAmount ? Color.BudgetRed : Color.IncomeGreen)
                                     .padding(.bottom, 5)
                             }
 
                             BudgetDollarView(amount: difference, red: totalSpent >= budgetAmount, scale: 2, size: width - 40)
 
-                            Text("\(budgetAmount >= totalSpent ? "left" : "over") \(budgetType)")
+                            Text(budgetType)
                                 .font(.system(.footnote, design: .rounded).weight(.medium))
                                 .foregroundColor(Color.SubtitleText)
                                 .minimumScaleFactor(0.7)
@@ -908,7 +1009,7 @@ struct SingleBudgetView: View {
         let date = budget.startDate ?? Date.now
 
         let startPredicate = NSPredicate(format: "%K >= %@", #keyPath(Transaction.date), date as CVarArg)
-        let endPredicate = NSPredicate(format: "%K <= %@", #keyPath(Transaction.date), Date.now as CVarArg)
+        let endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), LogCutoff.startOfTomorrow() as CVarArg)
         let incomePredicate = NSPredicate(format: "income = %d", false)
 
         let andPredicate: NSCompoundPredicate
@@ -967,68 +1068,37 @@ struct AnimatedBudgetBarGraph: View {
 }
 
 struct BudgetDollarView: View {
-    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
-
     var amount: Double
     var red: Bool
     var scale: Int
+    // Kept for the call sites. The text fits itself to the width it is offered.
     var size: CGFloat
 
-    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-    var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
-    }
-
-    var dynamicTypeSizes: (symbol: Font.TextStyle, amount: Font.TextStyle) {
+    private var metrics: (size: CGFloat, style: Font.TextStyle, ratio: CGFloat) {
         if scale == 1 {
-            return (.callout, .title3)
+            return (20, .title3, 0.8)
         } else if scale == 2 {
-            return (.body, .title2)
+            return (22, .title2, 0.77)
         } else {
-            return (.title2, .largeTitle)
+            return (34, .largeTitle, 0.65)
         }
     }
 
     var body: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 1.3) {
-            Group {
-                Text(currencySymbol)
-                    .font(.system(dynamicTypeSizes.symbol, design: .rounded).weight(.medium))
-                    .foregroundColor(red ? Color("BudgetRed") : Color.SubtitleText) +
-
-                Text("\(amount, specifier: showCents && amount < 100 ? "%.2f" : "%.0f")")
-                    .font(.system(dynamicTypeSizes.amount, design: .rounded).weight(.medium))
-                    .foregroundColor(red ? Color("BudgetRed") : Color.PrimaryText)
-            }
-        }
-        .minimumScaleFactor(0.5)
-        .lineLimit(1)
+        AmountText(
+            amount, size: metrics.size, relativeTo: metrics.style, weight: .medium, style: .hero,
+            secondaryRatio: metrics.ratio, color: red ? Color.BudgetRed : Color.PrimaryText,
+            secondaryColor: red ? Color.BudgetRed : Color.SubtitleText, minimumScale: 0.6
+        )
     }
 }
 
 struct DetailedBudgetDollarView: View {
     var amount: Double
-    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
-
-    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-    var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
-    }
 
     var body: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 1.3) {
-            Group {
-                Text(currencySymbol)
-                    .font(.system(.title2, design: .rounded).weight(.medium))
-                    .foregroundColor(Color.SubtitleText) +
-
-                Text("\(amount, specifier: showCents && amount < 100 ? "%.2f" : "%.0f")")
-                    .font(.system(.largeTitle, design: .rounded).weight(.medium))
-                    .foregroundColor(Color.PrimaryText)
-            }
-        }
-        .minimumScaleFactor(0.5)
-        .lineLimit(1)
+        AmountText(amount, role: .title)
+            .amountReveal(amount)
     }
 }
 
@@ -1036,27 +1106,12 @@ struct DetailedBudgetDifferenceDollarView: View {
     var amount: Double
     var red: Bool
 
-    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
-
-    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-    var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
-    }
-
     var body: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 1.3) {
-            Group {
-                Text(currencySymbol)
-                    .font(.system(.title2, design: .rounded).weight(.medium))
-                    .foregroundColor(red ? Color("BudgetRed") : Color.SubtitleText) +
-
-                Text("\(amount, specifier: showCents && amount < 100 ? "%.2f" : "%.0f")")
-                    .font(.system(.largeTitle, design: .rounded).weight(.medium))
-                    .foregroundColor(red ? Color("BudgetRed") : Color.PrimaryText)
-            }
-        }
-        .minimumScaleFactor(0.5)
-        .lineLimit(1)
+        AmountText(
+            amount, role: .title, color: red ? Color.BudgetRed : Color.PrimaryText,
+            secondaryColor: red ? Color.BudgetRed : Color.SubtitleText
+        )
+        .amountReveal(amount)
     }
 }
 
@@ -1086,7 +1141,7 @@ struct DeleteBudgetAlert: View {
                     .font(.system(.title2, design: .rounded).weight(.medium))
                     .foregroundColor(.PrimaryText)
 
-                Text("This action cannot be undone.")
+                Text("Your transactions stay. Only the budget is removed.")
                     .font(.system(.title3, design: .rounded).weight(.medium))
                     .foregroundColor(.SubtitleText)
                     .padding(.bottom, 25)
@@ -1096,12 +1151,11 @@ struct DeleteBudgetAlert: View {
                     self.presentationMode.wrappedValue.dismiss()
 
                     withAnimation {
-                        moc.delete(toDelete)
-                        dataController.save()
+                        BudgetMath.delete(toDelete, dataController: dataController)
                     }
 
                 } label: {
-                    DeleteButton(text: "Delete", red: true)
+                    DeleteButton(text: String(localized: "Delete"), red: true)
                 }
                 .padding(.bottom, 8)
 
@@ -1111,7 +1165,7 @@ struct DeleteBudgetAlert: View {
                     }
 
                 } label: {
-                    DeleteButton(text: "Cancel", red: false)
+                    DeleteButton(text: String(localized: "Cancel"), red: false)
                 }
             }
             .padding(13)
@@ -1170,7 +1224,7 @@ struct DeleteMainBudgetAlert: View {
                     .font(.system(.title2, design: .rounded).weight(.medium))
                     .foregroundColor(.PrimaryText)
 
-                Text("This action cannot be undone.")
+                Text("Your transactions stay. Only the budget is removed.")
                     .font(.system(.title3, design: .rounded).weight(.medium))
                     .foregroundColor(.SubtitleText)
                     .padding(.bottom, 25)
@@ -1179,12 +1233,11 @@ struct DeleteMainBudgetAlert: View {
                     dismiss()
 
                     withAnimation {
-                        moc.delete(toDelete)
-                        dataController.save()
+                        BudgetMath.delete(toDelete, dataController: dataController)
                     }
 
                 } label: {
-                    DeleteButton(text: "Delete", red: true)
+                    DeleteButton(text: String(localized: "Delete"), red: true)
                 }
                 .padding(.bottom, 8)
 
@@ -1194,7 +1247,7 @@ struct DeleteMainBudgetAlert: View {
                     }
 
                 } label: {
-                    DeleteButton(text: "Cancel", red: false)
+                    DeleteButton(text: String(localized: "Cancel"), red: false)
                 }
             }
             .multilineTextAlignment(.leading)
@@ -1428,8 +1481,10 @@ struct TimeBudgetView: View {
     }
 
     @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-    var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
+    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
+    @AppStorage("currencySymbolOverride", store: UserDefaults.appGroup) var symbolOverride: String = ""
+    var moneySettings: MoneySettings {
+        MoneySettings.resolve(currency: currency, showCents: showCents, symbolOverride: symbolOverride)
     }
 
     var difference: Double {
@@ -1461,11 +1516,11 @@ struct TimeBudgetView: View {
                     return String(localized: "left \(weekString)")
                 } else if budgetType == 3 {
                     let components = Calendar.current.dateComponents([.month], from: startDate, to: budget.wrappedDate)
-                    let monthString = String(localized: "\(components.month!) months ago")
+                    let monthString = String(localized: "\(components.month ?? 0) months ago")
                     return String(localized: "left \(monthString)")
                 } else if budgetType == 4 {
                     let components = Calendar.current.dateComponents([.year], from: startDate, to: budget.wrappedDate)
-                    let yearString = String(localized: "\(components.year!) months ago")
+                    let yearString = String(localized: "\(components.year ?? 0) years ago")
                     return String(localized: "left \(yearString)")
                 } else {
                     return ""
@@ -1495,11 +1550,11 @@ struct TimeBudgetView: View {
                     return String(localized: "over \(weekString)")
                 } else if budgetType == 3 {
                     let components = Calendar.current.dateComponents([.month], from: startDate, to: budget.wrappedDate)
-                    let monthString = String(localized: "\(components.month!) months ago")
+                    let monthString = String(localized: "\(components.month ?? 0) months ago")
                     return String(localized: "over \(monthString)")
                 } else if budgetType == 4 {
                     let components = Calendar.current.dateComponents([.year], from: startDate, to: budget.wrappedDate)
-                    let yearString = String(localized: "\(components.year!) months ago")
+                    let yearString = String(localized: "\(components.year ?? 0) years ago")
                     return String(localized: "over \(yearString)")
                 } else {
                     return ""
@@ -1519,25 +1574,21 @@ struct TimeBudgetView: View {
             let components = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
             return 7 - (components.day ?? 0)
         } else if budgetType == 3 {
-            let components1 = calendar.dateComponents([.day], from: budget.wrappedDate, to: budget.endDate)
-            let numberOfDays = components1.day!
-            let components2 = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
-            let numberOfDaysPast = components2.day!
+            let days = BudgetMath.days(from: budget.wrappedDate, to: budget.endDate)
 
-            return Int(numberOfDays - numberOfDaysPast)
+            return days.total - days.past
         } else if budgetType == 4 {
-            let components1 = calendar.dateComponents([.day], from: budget.wrappedDate, to: budget.endDate)
-            let numberOfDays = components1.day!
-            let components2 = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
-            let numberOfDaysPast = components2.day!
-            return Int(numberOfDays - numberOfDaysPast)
+            let days = BudgetMath.days(from: budget.wrappedDate, to: budget.endDate)
+
+            return days.total - days.past
         } else {
             return 0
         }
     }
 
     var leftPerDay: Double {
-        if budgetType >= 2 {
+        // No division by zero when the period has not been rolled yet.
+        if budgetType >= 2, daysLeftNumber > 0 {
             return (budgetAmount - totalSpent) / Double(daysLeftNumber)
         } else {
             return 0
@@ -1546,7 +1597,7 @@ struct TimeBudgetView: View {
 
     var showExtraDetails: Bool {
         if budgetType >= 2 {
-            return budget.startDate == startDate && totalSpent < budgetAmount && daysLeftNumber != 1
+            return budget.startDate == startDate && totalSpent < budgetAmount && daysLeftNumber > 1
         } else {
             return false
         }
@@ -1633,10 +1684,14 @@ struct TimeBudgetView: View {
                 }
                 .frame(height: 28)
 
-                HStack {
-                    Text("\(currencySymbol)\(totalSpent, specifier: "%.2f")")
-                    Spacer()
-                    Text("\(currencySymbol)\(budgetAmount, specifier: "%.2f")")
+                HStack(spacing: 8) {
+                    Text(MoneyFormat.string(totalSpent, settings: moneySettings))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Spacer(minLength: 0)
+                    Text(MoneyFormat.string(budgetAmount, settings: moneySettings))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                 }
                 .frame(maxWidth: .infinity)
                 .font(.system(.caption, design: .rounded))
@@ -1679,7 +1734,7 @@ struct FilteredCategoryDayBudgetView: View {
     @Binding var totalSpent: Double
     @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
     var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
+        return MoneyFormat.symbol(for: currency)
     }
 
     var date: Date
@@ -1723,6 +1778,21 @@ struct FilteredCategoryDayBudgetView: View {
                 totalSpent = holding
             }
         }
+        // The total used to stay stale after a row was added or deleted on this screen.
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextObjectsDidChange)) { notification in
+            guard BudgetMath.touchesBudgetData(notification) else {
+                return
+            }
+
+            DispatchQueue.main.async {
+                var holding = 0.0
+                transactions.forEach { transaction in
+                    holding += transaction.wrappedAmount
+                }
+
+                totalSpent = holding
+            }
+        }
 //        .fullScreenCover(item: $toDelete, onDismiss: {
 //            toDelete = nil
 //        }) { transaction in
@@ -1740,7 +1810,7 @@ struct FilteredCategoryDayBudgetView: View {
         date = day
 
         let datePredicate = NSPredicate(format: "%K == %@", #keyPath(Transaction.day), day as CVarArg)
-        let dateCapPredicate = NSPredicate(format: "%K <= %@", #keyPath(Transaction.date), Date.now as CVarArg)
+        let dateCapPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), LogCutoff.startOfTomorrow() as CVarArg)
         let incomePredicate = NSPredicate(format: "income = %d", false)
 
         if let unwrappedCategory = category {
@@ -1803,6 +1873,21 @@ struct FilteredBudgetView: View {
                 totalSpent = holding
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextObjectsDidChange)) { notification in
+            guard BudgetMath.touchesBudgetData(notification) else {
+                return
+            }
+
+            DispatchQueue.main.async {
+                var holding = 0.0
+                transactions.forEach { day in
+                    day.forEach { transaction in
+                        holding += transaction.wrappedAmount
+                    }
+                }
+                totalSpent = holding
+            }
+        }
     }
 
     init(category: Category? = nil, startDate: Date, totalSpent: Binding<Double>, type: Int) {
@@ -1817,28 +1902,20 @@ struct FilteredBudgetView: View {
         calendar.firstWeekday = UserDefaults.appGroup.integer(forKey: "firstWeekday")
         calendar.minimumDaysInFirstWeek = 4
 
+        // A period that starts mid-month is not in the same calendar unit as today, so the
+        // end is capped by date: upcoming rows must not count, same as on the cards.
+        let tomorrow = LogCutoff.startOfTomorrow()
+        let next: Date
+
         if type == 1 {
-            if calendar.isDate(startDate, equalTo: Date.now, toGranularity: .weekOfYear) {
-                endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), Date.now as CVarArg)
-            } else {
-                let next = calendar.date(byAdding: .day, value: 7, to: startDate) ?? Date.now
-                endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), next as CVarArg)
-            }
+            next = calendar.date(byAdding: .day, value: 7, to: startDate) ?? tomorrow
         } else if type == 2 {
-            if calendar.isDate(startDate, equalTo: Date.now, toGranularity: .month) {
-                endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), Date.now as CVarArg)
-            } else {
-                let next = calendar.date(byAdding: .month, value: 1, to: startDate) ?? Date.now
-                endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), next as CVarArg)
-            }
+            next = calendar.date(byAdding: .month, value: 1, to: startDate) ?? tomorrow
         } else {
-            if calendar.isDate(startDate, equalTo: Date.now, toGranularity: .year) {
-                endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), Date.now as CVarArg)
-            } else {
-                let next = calendar.date(byAdding: .year, value: 1, to: startDate) ?? Date.now
-                endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), next as CVarArg)
-            }
+            next = calendar.date(byAdding: .year, value: 1, to: startDate) ?? tomorrow
         }
+
+        endPredicate = NSPredicate(format: "%K < %@", #keyPath(Transaction.date), min(next, tomorrow) as CVarArg)
 
         if let unwrappedCategory = category {
             let categoryPredicate = NSPredicate(format: "%K == %@", #keyPath(Transaction.category), unwrappedCategory)
@@ -1922,8 +1999,10 @@ struct TimeMainBudgetView: View {
     }
 
     @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-    var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
+    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
+    @AppStorage("currencySymbolOverride", store: UserDefaults.appGroup) var symbolOverride: String = ""
+    var moneySettings: MoneySettings {
+        MoneySettings.resolve(currency: currency, showCents: showCents, symbolOverride: symbolOverride)
     }
 
     var difference: Double {
@@ -1955,11 +2034,11 @@ struct TimeMainBudgetView: View {
                     return String(localized: "left \(weekString)")
                 } else if budgetType == 3 {
                     let components = Calendar.current.dateComponents([.month], from: startDate, to: budget.wrappedDate)
-                    let monthString = String(localized: "\(components.month!) months ago")
+                    let monthString = String(localized: "\(components.month ?? 0) months ago")
                     return String(localized: "left \(monthString)")
                 } else if budgetType == 4 {
                     let components = Calendar.current.dateComponents([.year], from: startDate, to: budget.wrappedDate)
-                    let yearString = String(localized: "\(components.year!) months ago")
+                    let yearString = String(localized: "\(components.year ?? 0) years ago")
                     return String(localized: "left \(yearString)")
                 } else {
                     return ""
@@ -1989,11 +2068,11 @@ struct TimeMainBudgetView: View {
                     return String(localized: "over \(weekString)")
                 } else if budgetType == 3 {
                     let components = Calendar.current.dateComponents([.month], from: startDate, to: budget.wrappedDate)
-                    let monthString = String(localized: "\(components.month!) months ago")
+                    let monthString = String(localized: "\(components.month ?? 0) months ago")
                     return String(localized: "over \(monthString)")
                 } else if budgetType == 4 {
                     let components = Calendar.current.dateComponents([.year], from: startDate, to: budget.wrappedDate)
-                    let yearString = String(localized: "\(components.year!) months ago")
+                    let yearString = String(localized: "\(components.year ?? 0) years ago")
                     return String(localized: "over \(yearString)")
                 } else {
                     return ""
@@ -2013,25 +2092,21 @@ struct TimeMainBudgetView: View {
             let components = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
             return 7 - (components.day ?? 0)
         } else if budgetType == 3 {
-            let components1 = calendar.dateComponents([.day], from: budget.wrappedDate, to: budget.endDate)
-            let numberOfDays = components1.day!
-            let components2 = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
-            let numberOfDaysPast = components2.day!
+            let days = BudgetMath.days(from: budget.wrappedDate, to: budget.endDate)
 
-            return Int(numberOfDays - numberOfDaysPast)
+            return days.total - days.past
         } else if budgetType == 4 {
-            let components1 = calendar.dateComponents([.day], from: budget.wrappedDate, to: budget.endDate)
-            let numberOfDays = components1.day!
-            let components2 = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
-            let numberOfDaysPast = components2.day!
-            return Int(numberOfDays - numberOfDaysPast)
+            let days = BudgetMath.days(from: budget.wrappedDate, to: budget.endDate)
+
+            return days.total - days.past
         } else {
             return 0
         }
     }
 
     var leftPerDay: Double {
-        if budgetType >= 2 {
+        // No division by zero when the period has not been rolled yet.
+        if budgetType >= 2, daysLeftNumber > 0 {
             return (budgetAmount - totalSpent) / Double(daysLeftNumber)
         } else {
             return 0
@@ -2040,7 +2115,7 @@ struct TimeMainBudgetView: View {
 
     var showExtraDetails: Bool {
         if budgetType >= 2 {
-            return budget.startDate == startDate && totalSpent < budgetAmount && daysLeftNumber != 1
+            return budget.startDate == startDate && totalSpent < budgetAmount && daysLeftNumber > 1
         } else {
             return false
         }
@@ -2119,10 +2194,14 @@ struct TimeMainBudgetView: View {
                 }
                 .frame(height: 28)
 
-                HStack {
-                    Text("\(currencySymbol)\(totalSpent, specifier: "%.2f")")
-                    Spacer()
-                    Text("\(currencySymbol)\(budgetAmount, specifier: "%.2f")")
+                HStack(spacing: 8) {
+                    Text(MoneyFormat.string(totalSpent, settings: moneySettings))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Spacer(minLength: 0)
+                    Text(MoneyFormat.string(budgetAmount, settings: moneySettings))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                 }
                 .frame(maxWidth: .infinity)
                 .font(.system(.caption, design: .rounded))
@@ -2327,14 +2406,16 @@ struct BudgetStepperView: View {
             StepperButtonView(left: true, disabled: date <= firstDate) {
                 if date > firstDate {
                     if type == 1 {
-                        date = Calendar.current.date(byAdding: .day, value: -1, to: date)!
+                        date = Calendar.current.date(byAdding: .day, value: -1, to: date) ?? date
                     } else if type == 2 {
-                        date = Calendar.current.date(byAdding: .day, value: -7, to: date)!
+                        date = Calendar.current.date(byAdding: .day, value: -7, to: date) ?? date
                     } else if type == 3 {
-                        date = Calendar.current.date(byAdding: .month, value: -1, to: date)!
+                        date = Calendar.current.date(byAdding: .month, value: -1, to: date) ?? date
                     } else if type == 4 {
-                        date = Calendar.current.date(byAdding: .year, value: -1, to: date)!
+                        date = Calendar.current.date(byAdding: .year, value: -1, to: date) ?? date
                     }
+
+                    Haptics.selection()
                 }
             }
 
@@ -2348,14 +2429,21 @@ struct BudgetStepperView: View {
             StepperButtonView(left: false, disabled: date == startDate) {
                 if date < startDate {
                     if type == 1 {
-                        date = Calendar.current.date(byAdding: .day, value: 1, to: date)!
+                        date = Calendar.current.date(byAdding: .day, value: 1, to: date) ?? date
                     } else if type == 2 {
-                        date = Calendar.current.date(byAdding: .day, value: 7, to: date)!
+                        date = Calendar.current.date(byAdding: .day, value: 7, to: date) ?? date
                     } else if type == 3 {
-                        date = Calendar.current.date(byAdding: .month, value: 1, to: date)!
+                        date = Calendar.current.date(byAdding: .month, value: 1, to: date) ?? date
                     } else if type == 4 {
-                        date = Calendar.current.date(byAdding: .year, value: -1, to: date)!
+                        date = Calendar.current.date(byAdding: .year, value: 1, to: date) ?? date
                     }
+
+                    // Month and year steps can land a day off after a short month.
+                    if date > startDate {
+                        date = startDate
+                    }
+
+                    Haptics.selection()
                 }
             }
         }
