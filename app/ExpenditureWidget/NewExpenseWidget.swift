@@ -60,43 +60,25 @@ struct NewExpenseWidgetEntry: TimelineEntry {
 struct NewExpenseWidgetEntryView: View {
     let entry: NewExpenseProvider.Entry
 
-    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
     var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
+        return MoneySettings.current.symbol
     }
 
     var body: some View {
-        if #available(iOS 17.0, *) {
-            ZStack {
-                AccessoryWidgetBackground()
+        ZStack {
+            AccessoryWidgetBackground()
 
-                Text("\(currencySymbol.count < 3 ? "+" : "")\(currencySymbol)")
-                    .font(.system(size: currencySymbol.count < 3 ? 13 : 11, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.SecondaryBackground)
-                    .padding(.vertical, 2)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                    .padding(.horizontal, 9)
-            }
-            .widgetURL(URL(string: "\(AppIdentifiers.urlScheme)://newExpense"))
-            .containerBackground(for: .widget) {
-                AccessoryWidgetBackground()
-            }
-        } else {
-            ZStack {
-                Circle()
-                    .fill(Color.SecondaryBackground.opacity(0.5))
-
-                Text("\(currencySymbol.count < 3 ? "+" : "")\(currencySymbol)")
-                    .font(.system(size: currencySymbol.count < 3 ? 13 : 11, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.SecondaryBackground)
-                    .padding(.vertical, 2)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                    .padding(.horizontal, 9)
-            }
-            .padding(0.5)
-            .widgetURL(URL(string: "\(AppIdentifiers.urlScheme)://newExpense"))
+            Text("\(currencySymbol.count < 3 ? "+" : "")\(currencySymbol)")
+                .font(.system(size: currencySymbol.count < 3 ? 13 : 11, weight: .bold, design: .rounded))
+                .foregroundColor(Color.SecondaryBackground)
+                .padding(.vertical, 2)
+                .frame(maxWidth: .infinity)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .padding(.horizontal, 9)
+        }
+        .widgetURL(URL(string: "\(AppIdentifiers.urlScheme)://newExpense"))
+        .containerBackground(for: .widget) {
+            AccessoryWidgetBackground()
         }
     }
 }
