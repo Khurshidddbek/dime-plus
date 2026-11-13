@@ -31,7 +31,7 @@ struct CategoryView: View {
     @State var positive = false
 
     var disabled: Bool {
-        income == false && expenseCategories.count >= 24
+        income == false && expenseCategories.count >= CategoryLimits.maxExpense
     }
 
     var body: some View {
@@ -114,7 +114,7 @@ struct CategoryView: View {
                     if disabled {
                         showToast = true
                         toastImage = "exclamationmark.triangle.fill"
-                        toastTitle = "Limit Exceeded"
+                        toastTitle = String(localized: "Limit Exceeded")
                         positive = false
                     } else {
                         newCategory = true
@@ -134,6 +134,7 @@ struct CategoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .ignoresSafeArea(.keyboard, edges: .all)
         .background(Color.PrimaryBackground)
+        .toastHost()
     }
 }
 
@@ -583,91 +584,13 @@ struct CategoryListView: View {
         .fullScreenCover(isPresented: $deleteMode, onDismiss: {
             toDelete = nil
         }) {
-            ZStack(alignment: .bottom) {
-                Color.clear
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        deleteMode = false
-                    }
-
-                VStack(alignment: .leading, spacing: 1.5) {
-                    Text("Delete '\(toDelete?.wrappedName ?? "")'?")
-                        .font(.system(size: 20, weight: .medium, design: .rounded))
-                        .foregroundColor(.PrimaryText)
-
-                    Text("This action cannot be undone, and all \(toDelete?.wrappedName ?? "") transactions would be deleted.")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundColor(.SubtitleText)
-                        .padding(.bottom, 15)
-
-                    Button {
-                        withAnimation {
-                            if let gonnaDelete = toDelete {
-                                moc.delete(gonnaDelete)
-                            }
-
-                            dataController.save()
-                        }
-
-                        toDelete = nil
-                        deleteMode = false
-
-                    } label: {
-                        Text("Delete")
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white)
-                            .frame(height: 45)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.AlertRed, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    }
-                    .padding(.bottom, 8)
-
-                    Button {
-                        withAnimation(.easeOut(duration: 0.7)) {
-                            deleteMode = false
-                            offset = 0
-                        }
-
-                    } label: {
-                        Text("Cancel")
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.PrimaryText.opacity(0.9))
-                            .frame(height: 45)
-                            .frame(maxWidth: .infinity)
-                            //                        .background(Color("13").opacity(0.23), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    }
-                }
-                .padding(13)
-                .background(RoundedRectangle(cornerRadius: 13).fill(Color.PrimaryBackground).shadow(color: systemColorScheme == .dark ? Color.clear : Color.gray.opacity(0.25), radius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 13).stroke(systemColorScheme == .dark ? Color.gray.opacity(0.1) : Color.clear, lineWidth: 1.3))
-                .offset(y: offset)
-                .gesture(
-                    DragGesture()
-                        .onChanged { gesture in
-                            if gesture.translation.height < 0 {
-                                offset = gesture.translation.height / 3
-                            } else {
-                                offset = gesture.translation.height
-                            }
-                        }
-                        .onEnded { value in
-                            if value.translation.height > 20 {
-                                deleteMode = false
-                                offset = 0
-                            } else {
-                                withAnimation {
-                                    offset = 0
-                                }
-                            }
-                        }
-                )
-                .padding(.horizontal, 17)
-                .padding(.bottom, bottomEdge == 0 ? 13 : bottomEdge)
+            if let category = toDelete {
+                CategoryDeleteCard(category: category, onCancel: {
+                    deleteMode = false
+                }, onConfirm: {
+                    deleteMode = false
+                })
             }
-            .edgesIgnoringSafeArea(.all)
-            .background(BackgroundBlurView())
         }
         .sheet(item: $toEdit, onDismiss: {
             toEdit = nil
@@ -688,7 +611,7 @@ struct CategoryListView: View {
         }
         .onChange(of: showSuggestions) { newValue in
             if !newValue {
-                toastTitle = "Suggestions Hidden"
+                toastTitle = String(localized: "Suggestions Hidden")
                 toastImage = "eye.slash"
                 showToast = true
                 positive = true
@@ -697,7 +620,9 @@ struct CategoryListView: View {
     }
 
     private func moveItem(at sets: IndexSet, destination: Int) {
-        let itemToMove = sets.first!
+        guard let itemToMove = sets.first else {
+            return
+        }
 
         if itemToMove < destination {
             var startIndex = itemToMove + 1
@@ -722,11 +647,7 @@ struct CategoryListView: View {
             categories[itemToMove].order = newOrder
         }
 
-        do {
-            dataController.save()
-        } catch {
-            print(error.localizedDescription)
-        }
+        dataController.save("reorder categories")
     }
 
     init(income: Binding<Bool>, mode: CategoryViewMode, showToast: Binding<Bool>, toastTitle: Binding<String>, toastImage: Binding<String>, positive: Binding<Bool>) {
@@ -817,7 +738,7 @@ struct NewCategoryAlert: View {
                         .transition(AnyTransition.opacity.combined(with: .move(edge: .top)))
                         .frame(maxWidth: 200)
                     } else {
-                        if expenseCategories.count == 24 {
+                        if expenseCategories.count == CategoryLimits.maxExpense {
                             Text("Income Category")
                                 .font(.system(.body, design: .rounded).weight(.semibold))
                                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -1018,7 +939,7 @@ struct NewCategoryAlert: View {
         .background(Color.PrimaryBackground)
         .animation(.easeOut(duration: 0.2), value: showToast)
         .onChange(of: expenseCategories.count) { _ in
-            if expenseCategories.count == 24 {
+            if expenseCategories.count == CategoryLimits.maxExpense {
                 dismiss()
             }
         }
@@ -1034,7 +955,7 @@ struct NewCategoryAlert: View {
         }
         .colorPickerSheet(isPresented: $showNativePicker, selection: $customSelectedColor, supportsAlpha: false, title: "")
         .onAppear {
-            if expenseCategories.count == 24 {
+            if expenseCategories.count == CategoryLimits.maxExpense {
                 income = true
             }
 
@@ -1060,33 +981,32 @@ struct NewCategoryAlert: View {
         outcome = results.error
 
         if outcome != .none {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            Haptics.error()
 
             switch outcome {
             case .incomplete:
-                toastTitle = "Incomplete Entry"
+                toastTitle = String(localized: "Incomplete Entry")
                 toastImage = "questionmark.app"
             case .missingEmoji:
-                toastTitle = "Missing Emoji"
+                toastTitle = String(localized: "Missing Emoji")
                 toastImage = "person.fill"
 
                 focusedField = .emoji
             case .missingName:
-                toastTitle = "Missing Name"
+                toastTitle = String(localized: "Missing Name")
                 toastImage = "character.cursor.ibeam"
 
                 focusedField = .name
             case .duplicate:
-                toastTitle = "Duplicate Found"
+                toastTitle = String(localized: "Duplicate Found")
                 toastImage = "externaldrive"
             case .duplicateEmoji:
-                toastTitle = "Duplicate Emoji"
+                toastTitle = String(localized: "Duplicate Emoji")
                 toastImage = "person.fill"
 
                 focusedField = .emoji
             case .duplicateName:
-                toastTitle = "Duplicate Name"
+                toastTitle = String(localized: "Duplicate Name")
                 toastImage = "character.cursor.ibeam"
 
                 focusedField = .name
@@ -1098,10 +1018,7 @@ struct NewCategoryAlert: View {
             showToast = true
 
         } else {
-            toastTitle = "Added \(newName)"
-
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            toastTitle = String(localized: "Added \(newName)")
 
             if income {
                 let category = Category(context: moc)
@@ -1112,7 +1029,12 @@ struct NewCategoryAlert: View {
                 category.colour = "IncomeGreen"
                 category.order = results.order
                 category.income = true
-                dataController.save()
+
+                if dataController.save("new category").isFailure {
+                    // Taken back so that a retry does not create a twin.
+                    moc.delete(category)
+                    return
+                }
 
                 newName = ""
                 newEmoji = ""
@@ -1127,7 +1049,10 @@ struct NewCategoryAlert: View {
                 category.colour = selectedColour
                 category.order = results.order
 
-                dataController.save()
+                if dataController.save("new category").isFailure {
+                    moc.delete(category)
+                    return
+                }
 
                 newName = ""
                 newEmoji = ""
@@ -1145,6 +1070,8 @@ struct NewCategoryAlert: View {
                     selectedColour = availableColours[0]
                 }
             }
+
+            Haptics.success()
 
             if budgetMode {
                 dismiss()
@@ -1430,7 +1357,7 @@ struct EditCategoryAlert: View {
             DeleteCategoryAlert(toDelete: category, deleted: $deleteMode)
         }
         .onChange(of: expenseCategories.count) { _ in
-            if expenseCategories.count == 24 {
+            if expenseCategories.count == CategoryLimits.maxExpense {
                 dismiss()
             }
         }
@@ -1455,33 +1382,32 @@ struct EditCategoryAlert: View {
         outcome = results.error
 
         if outcome != .none {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
+            Haptics.error()
 
             switch outcome {
             case .incomplete:
-                toastTitle = "Incomplete Entry"
+                toastTitle = String(localized: "Incomplete Entry")
                 toastImage = "questionmark.app"
             case .missingEmoji:
-                toastTitle = "Missing Emoji"
+                toastTitle = String(localized: "Missing Emoji")
                 toastImage = "person.fill"
 
                 focusedField = .emoji
             case .missingName:
-                toastTitle = "Missing Name"
+                toastTitle = String(localized: "Missing Name")
                 toastImage = "character.cursor.ibeam"
 
                 focusedField = .name
             case .duplicate:
-                toastTitle = "Duplicate Found"
+                toastTitle = String(localized: "Duplicate Found")
                 toastImage = "externaldrive"
             case .duplicateEmoji:
-                toastTitle = "Duplicate Emoji"
+                toastTitle = String(localized: "Duplicate Emoji")
                 toastImage = "person.fill"
 
                 focusedField = .emoji
             case .duplicateName:
-                toastTitle = "Duplicate Name"
+                toastTitle = String(localized: "Duplicate Name")
                 toastImage = "character.cursor.ibeam"
 
                 focusedField = .name
@@ -1491,23 +1417,26 @@ struct EditCategoryAlert: View {
 
             showToast = true
         } else {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-
             if toEdit.income {
                 toEdit.name = newName.trimmingCharacters(in: .whitespaces).capitalized
                 toEdit.emoji = newEmoji
 
-                dataController.save()
+                if dataController.save("edit category").isFailure {
+                    return
+                }
             } else {
                 toEdit.name = newName.trimmingCharacters(in: .whitespaces).capitalized
                 toEdit.emoji = newEmoji
                 toEdit.colour = selectedColour
 
-                dataController.save()
+                if dataController.save("edit category").isFailure {
+                    return
+                }
             }
 
-            rootToastTitle = "Edited \(newName)"
+            Haptics.success()
+
+            rootToastTitle = String(localized: "Edited \(newName)")
             rootToastImage = "checkmark.circle.fill"
             positive = true
             showRootToast = true
@@ -1520,114 +1449,18 @@ struct EditCategoryAlert: View {
 }
 
 struct DeleteCategoryAlert: View {
-    @Environment(\.managedObjectContext) var moc
-    @EnvironmentObject var dataController: DataController
     @Environment(\.dismiss) var dismiss
     let toDelete: Category
     @Binding var deleted: Bool
-    @Environment(\.colorScheme) var systemColorScheme
-
-    @AppStorage("bottomEdge", store: UserDefaults.appGroup) var bottomEdge: Double = 15
-
-    @State private var offset: CGFloat = 0
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Color.clear
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    dismiss()
-                }
-
-            VStack(alignment: .leading, spacing: 1.5) {
-                Text("Delete '\(toDelete.wrappedName)'?")
-                    .font(.system(.title2, design: .rounded).weight(.medium))
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-//                    .font(.system(size: 20, weight: .medium, design: .rounded))
-                    .foregroundColor(.PrimaryText)
-
-                Text("This action cannot be undone.")
-                    .font(.system(.title3, design: .rounded).weight(.medium))
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-//                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundColor(.SubtitleText)
-                    .padding(.bottom, 15)
-                    .accessibility(hidden: true)
-
-                Button {
-                    deleted = true
-                    dismiss()
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        withAnimation {
-                            moc.delete(toDelete)
-                            dataController.save()
-                        }
-                    }
-
-                } label: {
-                    Text("Delete")
-                        .font(.system(.title3, design: .rounded).weight(.semibold))
-                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                        .foregroundColor(.white)
-                        .frame(height: 45)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.AlertRed, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                }
-                .padding(.bottom, 8)
-
-                Button {
-                    withAnimation(.easeOut(duration: 0.7)) {
-                        dismiss()
-                    }
-
-                } label: {
-                    Text("Cancel")
-                        .font(.system(.title3, design: .rounded).weight(.semibold))
-                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-//                        .font(.system(size: 20, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.PrimaryText.opacity(0.9))
-                        .frame(height: 45)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                }
-            }
-            .padding(13)
-//            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-            .background(RoundedRectangle(cornerRadius: 13).fill(Color.PrimaryBackground).shadow(color: systemColorScheme == .dark ? Color.clear : Color.gray.opacity(0.25), radius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 13).stroke(systemColorScheme == .dark ? Color.gray.opacity(0.1) : Color.clear, lineWidth: 1.3))
-            .offset(y: offset)
-            .gesture(
-                DragGesture()
-                    .onChanged { gesture in
-                        if gesture.translation.height < 0 {
-                            offset = gesture.translation.height / 3
-                        } else {
-                            offset = gesture.translation.height
-                        }
-                    }
-                    .onEnded { value in
-                        if value.translation.height > 20 {
-                            dismiss()
-                        } else {
-                            withAnimation {
-                                offset = 0
-                            }
-                        }
-                    }
-            )
-//            .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .local)
-//                .onEnded({ value in
-//                    if value.translation.height > 0 {
-//                        dismiss()
-//                    }
-//                }))
-            .padding(.horizontal, 17)
-            .padding(.bottom, bottomEdge == 0 ? 13 : bottomEdge)
-        }
-        .edgesIgnoringSafeArea(.all)
-        .background(BackgroundBlurView())
+        CategoryDeleteCard(category: toDelete, onCancel: {
+            dismiss()
+        }, onConfirm: {
+            // Closes the edit sheet too, before the category goes away.
+            deleted = true
+            dismiss()
+        })
     }
 }
 
@@ -1715,14 +1548,14 @@ struct SuggestedCategoriesView: View {
                     .onTapGesture {
                         // double check
 
-                        let (outcome, _) = dataController.categoryCheck(name: category.name, emoji: category.emoji, income: income)
+                        let localisedName = NSLocalizedString(category.name, comment: "category name")
+                        let (outcome, _) = dataController.categoryCheck(name: localisedName, emoji: category.emoji, income: income)
 
                         if outcome != .none {
                             return
                         }
 
-                        let impactMed = UIImpactFeedbackGenerator(style: .light)
-                        impactMed.impactOccurred()
+                        Haptics.tap()
 
                         if !income {
                             let suggestedCategory = Category(context: moc)
@@ -1733,7 +1566,11 @@ struct SuggestedCategoriesView: View {
                             suggestedCategory.colour = selectedColour
                             suggestedCategory.order = (categories.last?.order ?? 0) + 1
                             suggestedCategory.income = false
-                            dataController.save()
+
+                            if dataController.save("new suggested category").isFailure {
+                                moc.delete(suggestedCategory)
+                                return
+                            }
 
                             availableColours = Color.colorArray
                             categories.forEach { category in
@@ -1756,7 +1593,10 @@ struct SuggestedCategoriesView: View {
                             suggestedCategory.colour = "#76FBB0"
                             suggestedCategory.order = (categories.last?.order ?? 0) + 1
                             suggestedCategory.income = true
-                            dataController.save()
+
+                            if dataController.save("new suggested category").isFailure {
+                                moc.delete(suggestedCategory)
+                            }
                         }
                     }
                 }
