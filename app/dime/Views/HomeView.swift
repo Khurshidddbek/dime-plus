@@ -93,12 +93,33 @@ struct HomeView: View {
             }
         }
         .background(TransactionCoverHost(inSearch: false))
+        // The only place the SMS inbox is presented from. The full entry screen opens from
+        // inside that cover, so it gets its environment here.
+        .smsInboxPresenter { request in
+            AnyView(
+                TransactionView(
+                    draft: TransactionEntryDraft(
+                        amount: request.amount, income: request.income, date: request.date,
+                        note: request.note, categoryID: request.categoryID
+                    )
+                ) { saved, id in
+                    if saved {
+                        SMSIngestor.shared.completeEdit(suggestionID: request.id, transactionID: id)
+                    }
+                }
+                .environmentObject(DataController.shared)
+                .environmentObject(OverallTransactionManager.shared)
+            )
+        }
         .confettiCannon(counter: $counter, num: 50, openingAngle: Angle(degrees: 0), closingAngle: Angle(degrees: 360), radius: 200)
         .onAppear {
-            AppLockWindowController.shared.attach(appLockVM)
+            // Asks for Face ID / passcode at launch when the lock is on (first call only).
+            AppLockWindowController.shared.attach(appLockVM, promptNow: true)
         }
         .onOpenURL { url in
-            if url.host == "search" {
+            if SMSRouter.shared.handle(url) {
+                currentTab = "Log"
+            } else if url.host == "search" {
                 currentTab = "Log"
             } else if url.host == "insights" {
                 currentTab = "Insights"
@@ -152,7 +173,9 @@ struct DeletePopupLayer: View {
             }
 
             DeleteTransactionAlert()
-                .offset(y: manager.showPopup ? 0 : 400)
+                .offset(y: manager.showPopup ? 0 : 600)
+                // The card stays in the tree after it slid away: VoiceOver must not reach its Delete button.
+                .accessibilityHidden(!manager.showPopup)
         }
     }
 }

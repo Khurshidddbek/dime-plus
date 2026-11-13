@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
@@ -13,6 +14,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         PersistenceStatus.shared.start()
+
+        // Only for taps: a tap on the bank SMS notification opens the inbox.
+        UNUserNotificationCenter.current().delegate = self
 
         let version = "\(UIApplication.appVersion ?? "?") (\(UIApplication.buildNumber ?? "?"))"
         let state = application.applicationState == .background ? "background" : "foreground"
@@ -39,5 +43,21 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         let sceneConfiguration = UISceneConfiguration(name: "Default", sessionRole: connectingSceneSession.role)
         sceneConfiguration.delegateClass = SceneDelegate.self
         return sceneConfiguration
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if response.notification.request.identifier == SMSNotifier.identifier {
+            DispatchQueue.main.async {
+                SMSRouter.shared.openInbox()
+            }
+        }
+
+        completionHandler()
     }
 }

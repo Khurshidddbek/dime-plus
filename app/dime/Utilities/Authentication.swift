@@ -39,87 +39,76 @@ class AppLockViewModel: ObservableObject {
         isAppLockEnabled = UserDefaults.standard.bool(forKey: "appLockEnabled")
     }
 
-    // Checking if the device is having BioMetric hardware and enrolled
+    // True when the device can check its owner: Face ID / Touch ID, or the passcode alone.
     func checkIfBioMetricAvailable() -> Bool {
         var error: NSError?
         let laContext = LAContext()
 
-        let isBiometricAvailable = laContext.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+        let isAvailable = laContext.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
 
         if let error = error {
-            print(error.localizedDescription)
+            DiagnosticsLog.shared.log("lock", "cannot authenticate: \(error.code)")
         }
 
-        if isBiometricAvailable {
-            enrollmentError = false
-        } else {
-            enrollmentError = true
-        }
+        enrollmentError = !isAvailable
 
-        return isBiometricAvailable
+        return isAvailable
     }
 
     // This method used to change the AppLock state.
     // If user is going to enable the AppLock then 'appLockState' should be 'true' and vice versa
     func appLockStateChange(appLockState: Bool) {
-        let laContext = LAContext()
-        if checkIfBioMetricAvailable() {
-            var reason = ""
-            if appLockState {
-                reason = "Provice Touch ID/Face ID to enable App Lock"
-            } else {
-                reason = "Provice Touch ID/Face ID to disable App Lock"
+        guard checkIfBioMetricAvailable() else {
+            if !appLockState {
+                // The passcode was removed after the lock was turned on: nothing can confirm
+                // the owner any more, so the switch must not get stuck in the on position.
+                disableAppLock()
+                isAppUnLocked = true
+                return
             }
 
-            laContext.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, error in
-                if success {
-                    if appLockState {
-                        DispatchQueue.main.async {
-                            self.enableAppLock()
-                            self.isAppUnLocked = true
-                        }
-                    } else {
-                        DispatchQueue.main.async {
-                            self.disableAppLock()
-                            self.isAppUnLocked = true
-                        }
-                    }
-                } else {
-                    if let error = error {
-                        DispatchQueue.main.async {
-                            print(error.localizedDescription)
-                        }
-                    }
-                }
+            // Without a passcode there is nothing to lock with. Never leave the app for Settings.
+            ToastCenter.shared.error(String(localized: "Set a device passcode first"))
+            return
+        }
+
+        let laContext = LAContext()
+        let reason = appLockState
+            ? String(localized: "Turn on App Lock")
+            : String(localized: "Turn off App Lock")
+
+        laContext.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, _ in
+            guard success else {
+                return
             }
-        } else {
-            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(settingsURL)
+
+            DispatchQueue.main.async {
+                if appLockState {
+                    self.enableAppLock()
+                } else {
+                    self.disableAppLock()
+                }
+
+                self.isAppUnLocked = true
             }
         }
     }
 
-    // This method will call on every launch of the app if user has enabled AppLock
+    // Kept for old call sites. The launch prompt is started by AppLockWindowController.
     func appLockValidation() {
+        guard checkIfBioMetricAvailable() else {
+            return
+        }
+
         let laContext = LAContext()
-        if checkIfBioMetricAvailable() {
-            let reason = "Enable App Lock"
-            laContext.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, error in
-                if success {
-                    DispatchQueue.main.async {
-                        self.isAppUnLocked = true
-                    }
-                } else {
-                    if let error = error {
-                        DispatchQueue.main.async {
-                            print(error.localizedDescription)
-                        }
-                    }
-                }
+
+        laContext.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: String(localized: "Unlock Dime")) { success, _ in
+            guard success else {
+                return
             }
-        } else {
-            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(settingsURL)
+
+            DispatchQueue.main.async {
+                self.isAppUnLocked = true
             }
         }
     }

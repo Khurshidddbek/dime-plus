@@ -70,6 +70,7 @@ struct ContentView: View {
                     let loaded = persistence.retryLoadStore()
 
                     if loaded {
+                        runFirstLaunchSetup()
                         runDataMigrations()
                         runLaunchMaintenance()
                     }
@@ -85,9 +86,7 @@ struct ContentView: View {
 //            UserDefaults.appGroup.set(false, forKey: "newTransactionAdded")
 //            WidgetCenter.shared.reloadTimelines(ofKind: "TemplateTransactions")
 
-            if appLockVM.isAppLockEnabled {
-                appLockVM.appLockValidation()
-            }
+            // The lock prompt is started by AppLockWindowController (attached in HomeView).
 
             let defaults =
                 UserDefaults.appGroup
@@ -96,22 +95,7 @@ struct ContentView: View {
                 defaults.set(1, forKey: "firstDayOfMonth")
             }
 
-            if firstLaunch {
-                showIntro = true
-                firstLaunch = false
-                showUpdateSheet = false
-
-                defaults.set(1, forKey: "firstWeekday")
-                defaults.set(1, forKey: "haptics")
-                defaults.set(1, forKey: "firstDayOfMonth")
-                defaults.set(1, forKey: "notificationOption")
-                defaults.set(false, forKey: "confetti")
-                defaults.set(false, forKey: "chromatic")
-                defaults.set(true, forKey: "showCents")
-                defaults.set(true, forKey: "animated")
-
-                defaults.set(2, forKey: "numberEntryType")
-            }
+            runFirstLaunchSetup()
 
             // The local setting wins. iCloud KVS only seeds a device that has no currency yet,
             // otherwise a stale synced value would replace the user's choice on every launch.
@@ -129,8 +113,10 @@ struct ContentView: View {
 
             runDataMigrations()
             runLaunchMaintenance()
+            SMSRouter.shared.sceneBecameActive()
 
-            if showUpdateSheet {
+            // Both covers hang on HomeView, which is not on screen while the store is closed.
+            if showUpdateSheet && persistence.isStoreLoaded {
                 showUpdate = true
                 showUpdateSheet = false
             }
@@ -154,7 +140,9 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .background || newPhase == .inactive {
-                if appLockVM.isAppLockEnabled {
+                // Only a real trip to the background locks. The lock window covers the
+                // inactive state (app switcher, Control Centre) by itself.
+                if newPhase == .background && appLockVM.isAppLockEnabled {
                     appLockVM.isAppUnLocked = false
                 }
 
@@ -172,6 +160,9 @@ struct ContentView: View {
                 }
             } else if newPhase == .active {
                 runLaunchMaintenance()
+                // Picks up what the Shortcuts automation stored in background, checks the
+                // clipboard (no paste prompt) and clears the delivered notification.
+                SMSRouter.shared.sceneBecameActive()
 
                 center.getNotificationSettings { settings in
                     if settings.authorizationStatus == .authorized {
@@ -191,6 +182,32 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    // Waits for an open store: the welcome cover hangs on HomeView, and after a failed
+    // first launch the intro would be marked as shown without ever appearing.
+    private func runFirstLaunchSetup() {
+        guard firstLaunch, persistence.isStoreLoaded else {
+            return
+        }
+
+        let defaults = UserDefaults.appGroup
+
+        showIntro = true
+        showUpdate = false
+        firstLaunch = false
+        showUpdateSheet = false
+
+        defaults.set(1, forKey: "firstWeekday")
+        defaults.set(1, forKey: "haptics")
+        defaults.set(1, forKey: "firstDayOfMonth")
+        defaults.set(1, forKey: "notificationOption")
+        defaults.set(false, forKey: "confetti")
+        defaults.set(false, forKey: "chromatic")
+        defaults.set(true, forKey: "showCents")
+        defaults.set(true, forKey: "animated")
+
+        defaults.set(2, forKey: "numberEntryType")
     }
 
     // One-time migrations. They must not be marked done while the store is not open.

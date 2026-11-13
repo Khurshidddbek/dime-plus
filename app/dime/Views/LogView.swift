@@ -36,11 +36,11 @@ struct LogView: View {
     // to show/hide tab bar
     var bottomEdge: CGFloat
 
-    // SMS inbox entry point. Integration slot: the integrator replaces EmptyView with the
-    // inbox banner or button. It sits at the top of the Log, also while the Log is empty.
+    // Bank SMS waiting for review and the clipboard chip. Zero height when there is nothing
+    // to show. It sits at the top of the Log, also while the Log is empty.
     @ViewBuilder
     var smsInboxEntry: some View {
-        EmptyView()
+        SMSInboxEntryCard()
     }
 
     var body: some View {
@@ -200,9 +200,9 @@ struct LogView: View {
             .padding(.top, topEdge + 10)
 
             ScrollView(showsIndicators: false) {
-                smsInboxEntry
-
                 if filter == .all {
+                    smsInboxEntry
+
                     LogInsightsView()
                 }
 
