@@ -820,6 +820,11 @@ final class SMSIngestor {
         }
 
         inbox.resolve(ids, entries: lines)
+
+        if let transactionID = transactionID {
+            ChangeHistory.shared.relabelAdded(transactionID: transactionID, source: ChangeHistory.Source.sms)
+        }
+
         DiagnosticsLog.shared.log("sms", "confirmed 1 through the entry screen")
     }
 

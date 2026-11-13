@@ -349,6 +349,11 @@ struct SettingsView: View {
                   optionalText: trash.items.isEmpty ? nil : MoneyFormat.number(Double(trash.items.count)))
               }
 
+              NavigationLink(destination: SettingsHistoryView()) {
+                SettingsRowView(
+                  systemImage: "clock.arrow.circlepath", title: "History of changes", colour: 130)
+              }
+
               //
               //                            NavigationLink(destination: SettingsQuickAddWidgetView()) {
               //                                SettingsRowView(systemImage: "bolt.square.fill", title: "Quick-Add Widget", colour: 115)

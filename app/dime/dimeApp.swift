@@ -30,6 +30,9 @@ struct dimeApp: App {
     }
 
     init() {
+        // Before the store opens, so no save of this process is missed.
+        ChangeHistory.shared.start()
+
         let dataController = DataController.shared
 //        let dataController = DataController()
         let unlockManager = UnlockManager(dataController: dataController)

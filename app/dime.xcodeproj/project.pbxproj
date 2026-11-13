@@ -10,6 +10,7 @@
 		00A1329B9A0CF75010D61443 /* SMSIngestor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86A5132F446AB84A0FED16BF /* SMSIngestor.swift */; };
 		057C817F6B734F3E941E381A /* EntryNumberPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5089C2C87EE9DA94E3A07586 /* EntryNumberPad.swift */; };
 		0C0E96A26205B404FE90EAF9 /* CategoryDeleteCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D9DEDCEA995A63A7DC9167 /* CategoryDeleteCard.swift */; };
+		16712596A40713254E0729E3 /* ChangeHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F14DF98A94066EDF2CFC97C0 /* ChangeHistory.swift */; };
 		18BAAECFE42C52902B979D39 /* MoneyFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC097DBD4EEDE89B56CE26A /* MoneyFormat.swift */; };
 		1A94BBF12447D0B2E83B2878 /* SMSPasteImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EBE47BE4E191A6321175F0 /* SMSPasteImportView.swift */; };
 		227EDB845D6BCE4EA32B25FC /* AppShortcuts.strings in Resources */ = {isa = PBXBuildFile; fileRef = 381CEA2FC2185AC8C4F7135A /* AppShortcuts.strings */; };
@@ -185,6 +186,7 @@
 		8E9A7C03FD383A2C535A5C97 /* BackupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48A66A382751F2765D043F46 /* BackupStore.swift */; };
 		9094EF26F569F1A29F9B23A4 /* SMSRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE60629D3D4A274BD25867D /* SMSRouter.swift */; };
 		9157C0A386213D905D856606 /* NoteSuggestionIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2848133D662F34D4C34A5B96 /* NoteSuggestionIndex.swift */; };
+		96548FD3AC72A6A1AF818327 /* SettingsHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FC8AA58099D123AC03A860F /* SettingsHistoryView.swift */; };
 		96D75EE6B6BEBC7F0726E413 /* MerchantNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A4B96B19AAAD6835CD83FD2 /* MerchantNormalizer.swift */; };
 		98D60E7CF8C735D7EB9B02CE /* StoreRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = B323B757E7A5FE7AB34803E1 /* StoreRecords.swift */; };
 		9D25C15A26C6722959E79380 /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4817E6B7DCD0CABC791C8F /* AppIdentifiers.swift */; };
@@ -435,6 +437,7 @@
 		6D92A256F1DACDD2684FAC37 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/MainInterface.strings; sourceTree = "<group>"; };
 		731DB11C2203E27E9CB5E82C /* SMSCardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSCardStore.swift; sourceTree = "<group>"; };
 		7D63FD3C7A7FE2527BA36F01 /* AmountInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmountInput.swift; sourceTree = "<group>"; };
+		7FC8AA58099D123AC03A860F /* SettingsHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsHistoryView.swift; sourceTree = "<group>"; };
 		8228AC2E35347F192064A78D /* SMSSetupGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSSetupGuideView.swift; sourceTree = "<group>"; };
 		86A5132F446AB84A0FED16BF /* SMSIngestor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSIngestor.swift; sourceTree = "<group>"; };
 		87D3BB1AA579C39E1443BD70 /* AppLockWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockWindow.swift; sourceTree = "<group>"; };
@@ -469,6 +472,7 @@
 		E499D085660F40F16D85BD56 /* InsightsTrendChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsTrendChart.swift; sourceTree = "<group>"; };
 		E7B490A0A8442A50586CE02F /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = Localizations/en.lproj/AppShortcuts.strings; sourceTree = "<group>"; };
 		EF3C7AF6F7AF89A9A92B646B /* InsightsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsData.swift; sourceTree = "<group>"; };
+		F14DF98A94066EDF2CFC97C0 /* ChangeHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeHistory.swift; sourceTree = "<group>"; };
 		F154474C43A309297230E543 /* SMSIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSIntents.swift; sourceTree = "<group>"; };
 		F2ABB35B82684F067CF2608A /* InsightsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsModel.swift; sourceTree = "<group>"; };
 		FDBDC383D0DA75FDA3A6BCEF /* SMSSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMSSettingsView.swift; sourceTree = "<group>"; };
@@ -647,6 +651,7 @@
 				9AF37569089821E5D3ED7B45 /* DataController+BulkWrites.swift */,
 				BA5099FAD56150E4F0FA841E /* TrashStore.swift */,
 				48A66A382751F2765D043F46 /* BackupStore.swift */,
+				F14DF98A94066EDF2CFC97C0 /* ChangeHistory.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -802,6 +807,7 @@
 				AC603FD4DFEB3CE07092974C /* SettingsDiagnosticsView.swift */,
 				51E2792C249709D39B9CD8DB /* SettingsTrashView.swift */,
 				1A6F1C9445411CE18ED95391 /* SettingsExportCard.swift */,
+				7FC8AA58099D123AC03A860F /* SettingsHistoryView.swift */,
 			);
 			path = "Settings Subviews";
 			sourceTree = "<group>";
@@ -1272,6 +1278,8 @@
 				A7911C5C39DEB7BEB7F0B6A8 /* SMSRulesView.swift in Sources */,
 				870E26910053066B7F4F856F /* SMSSettingsView.swift in Sources */,
 				A840161D7B7E17DE2439BA14 /* SMSSetupGuideView.swift in Sources */,
+				16712596A40713254E0729E3 /* ChangeHistory.swift in Sources */,
+				96548FD3AC72A6A1AF818327 /* SettingsHistoryView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
