@@ -19,6 +19,10 @@ enum CloudSyncStatus {
     case unavailable
 
     static func current(_ dataController: DataController) -> CloudSyncStatus {
+        if !AppIdentifiers.cloudSyncEnabled {
+            return .unavailable
+        }
+
         if let error = dataController.lastCloudError {
             return .error(error.localizedDescription)
         }

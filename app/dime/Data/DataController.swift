@@ -123,7 +123,7 @@ class DataController: ObservableObject {
         description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         description.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
 
-        if role == .app {
+        if role == .app && AppIdentifiers.cloudSyncEnabled {
             description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: AppIdentifiers.cloudContainer)
         } else {
             description.cloudKitContainerOptions = nil
@@ -181,7 +181,7 @@ class DataController: ObservableObject {
             viewContext.transactionAuthor = role == .app ? "app" : "extension"
             viewContext.name = "view"
 
-            DiagnosticsLog.shared.log("store", "loaded role=\(role == .app ? "app" : "extension") cloudKit=\(role == .app) url=\(loadedURL?.path ?? "?")")
+            DiagnosticsLog.shared.log("store", "loaded role=\(role == .app ? "app" : "extension") cloudKit=\(role == .app && AppIdentifiers.cloudSyncEnabled) url=\(loadedURL?.path ?? "?")")
         }
 
         NotificationCenter.default.post(name: .dimeStoreLoadStateChanged, object: self)
@@ -262,9 +262,16 @@ class DataController: ObservableObject {
             let request = NSPersistentHistoryChangeRequest.fetchHistory(after: lastToken)
 
             guard let result = (try? context.execute(request)) as? NSPersistentHistoryResult,
-                  let transactions = result.result as? [NSPersistentHistoryTransaction],
-                  let newest = transactions.last
+                  let transactions = result.result as? [NSPersistentHistoryTransaction]
             else {
+                // An expired or foreign token fails on every fetch: start again from now,
+                // otherwise writes of the extensions would never be merged again.
+                self.storedHistoryToken = self.container.persistentStoreCoordinator.currentPersistentHistoryToken(fromStores: nil)
+                DiagnosticsLog.shared.log("store", "history fetch failed, token reset")
+                return
+            }
+
+            guard let newest = transactions.last else {
                 return
             }
 
@@ -430,6 +437,13 @@ class DataController: ObservableObject {
         let context = container.viewContext
 
         guard context.hasChanges else {
+            // The failed changes were undone, nothing is unsaved: without this the
+            // "Not saved" state would stay on until the next real save.
+            if lastSaveFailure != nil {
+                lastSaveFailure = nil
+                NotificationCenter.default.post(name: .dimeSaveRecovered, object: self)
+            }
+
             return false
         }
 
@@ -708,7 +722,7 @@ class DataController: ObservableObject {
         if note.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
             transaction.note = category?.wrappedName ?? ""
         } else {
-            transaction.note = note.trimmingCharacters(in: .whitespaces)
+            transaction.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
         transaction.income = income
@@ -1009,123 +1023,44 @@ class DataController: ObservableObject {
     }
 
     func categoryCheck(name: String, emoji: String, income: Bool) -> (error: CategoryError, order: Int64) {
-        if name.trimmingCharacters(in: .whitespacesAndNewlines) == "" && emoji == "" {
-            return (CategoryError.incomplete, 0)
-        } else if name.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
-            return (CategoryError.missingName, 0)
-        } else if emoji == "" {
-            return (CategoryError.missingEmoji, 0)
-        }
+        let existing = results(for: fetchRequestForCategories(income: income))
 
-        if income {
-            let fetchRequest = fetchRequestForCategories(income: true)
-            let incomeCategories = results(for: fetchRequest)
-
-            var emojiArray = [String]()
-            var nameArray = [String]()
-
-            incomeCategories.forEach { category in
-                emojiArray.append(category.wrappedEmoji)
-                nameArray.append(category.wrappedName)
-            }
-
-            if emojiArray.contains(emoji) && nameArray.contains(name) {
-                return (CategoryError.duplicate, 0)
-            } else if emojiArray.contains(emoji) {
-                return (CategoryError.duplicateEmoji, 0)
-            } else if nameArray.contains(name) {
-                return (CategoryError.duplicateName, 0)
-            } else {
-                let newItemOrder = (incomeCategories.last?.order ?? 0) + 1
-                return (CategoryError.none, newItemOrder)
-            }
-        } else {
-            let fetchRequest = fetchRequestForCategories(income: false)
-            let expenseCategories = results(for: fetchRequest)
-
-            var emojiArray = [String]()
-            var nameArray = [String]()
-
-            expenseCategories.forEach { category in
-                emojiArray.append(category.wrappedEmoji)
-                nameArray.append(category.wrappedName)
-            }
-
-            if emojiArray.contains(emoji) && nameArray.contains(name) {
-                return (CategoryError.duplicate, 0)
-            } else if emojiArray.contains(emoji) {
-                return (CategoryError.duplicateEmoji, 0)
-            } else if nameArray.contains(name) {
-                return (CategoryError.duplicateName, 0)
-            } else {
-                let newItemOrder = (expenseCategories.last?.order ?? 0) + 1
-                return (CategoryError.none, newItemOrder)
-            }
-        }
+        return categoryCheck(name: name, emoji: emoji, among: existing)
     }
 
     func categoryCheckEdit(name: String, emoji: String, toEdit: Category) -> (error: CategoryError, order: Int64) {
-        if name.trimmingCharacters(in: .whitespacesAndNewlines) == "" && emoji == "" {
+        var existing = results(for: fetchRequestForCategories(income: toEdit.income))
+
+        if let position = existing.firstIndex(of: toEdit) {
+            existing.remove(at: position)
+        }
+
+        return categoryCheck(name: name, emoji: emoji, among: existing)
+    }
+
+    // Two categories may share an emoji. Names are compared trimmed and without case,
+    // so "Food" and " food" count as the same category.
+    private func categoryCheck(name: String, emoji: String, among existing: [Category]) -> (error: CategoryError, order: Int64) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmedName.isEmpty && emoji.isEmpty {
             return (CategoryError.incomplete, 0)
-        } else if name.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+        } else if trimmedName.isEmpty {
             return (CategoryError.missingName, 0)
-        } else if emoji == "" {
+        } else if emoji.isEmpty {
             return (CategoryError.missingEmoji, 0)
         }
 
-        if toEdit.income {
-            let fetchRequest = fetchRequestForCategories(income: true)
-            var incomeCategories = results(for: fetchRequest)
-
-            if let position = incomeCategories.firstIndex(of: toEdit) {
-                incomeCategories.remove(at: position)
-            }
-
-            var emojiArray = [String]()
-            var nameArray = [String]()
-
-            incomeCategories.forEach { category in
-                emojiArray.append(category.wrappedEmoji)
-                nameArray.append(category.wrappedName)
-            }
-
-            if emojiArray.contains(emoji) && nameArray.contains(name) {
-                return (CategoryError.duplicate, 0)
-            } else if emojiArray.contains(emoji) {
-                return (CategoryError.duplicateEmoji, 0)
-            } else if nameArray.contains(name) {
-                return (CategoryError.duplicateName, 0)
-            } else {
-                let newItemOrder = (incomeCategories.last?.order ?? 0) + 1
-                return (CategoryError.none, newItemOrder)
-            }
-        } else {
-            let fetchRequest = fetchRequestForCategories(income: false)
-            var expenseCategories = results(for: fetchRequest)
-
-            if let position = expenseCategories.firstIndex(of: toEdit) {
-                expenseCategories.remove(at: position)
-            }
-
-            var emojiArray = [String]()
-            var nameArray = [String]()
-
-            expenseCategories.forEach { category in
-                emojiArray.append(category.wrappedEmoji)
-                nameArray.append(category.wrappedName)
-            }
-
-            if emojiArray.contains(emoji) && nameArray.contains(name) {
-                return (CategoryError.duplicate, 0)
-            } else if emojiArray.contains(emoji) {
-                return (CategoryError.duplicateEmoji, 0)
-            } else if nameArray.contains(name) {
-                return (CategoryError.duplicateName, 0)
-            } else {
-                let newItemOrder = (expenseCategories.last?.order ?? 0) + 1
-                return (CategoryError.none, newItemOrder)
-            }
+        let key = trimmedName.lowercased()
+        let taken = existing.contains { category in
+            category.wrappedName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == key
         }
+
+        if taken {
+            return (CategoryError.duplicateName, 0)
+        }
+
+        return (CategoryError.none, (existing.last?.order ?? 0) + 1)
     }
 
     func fetchRequestForBudgets() -> NSFetchRequest<Budget> {

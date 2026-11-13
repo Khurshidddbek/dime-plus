@@ -13,6 +13,11 @@ enum AppIdentifiers {
     static let cloudContainer = "iCloud.uz.khurshidbek.dime"
     static let urlScheme = "dimefork"
 
+    // Set to false when the app is signed with a free Apple ID: such a team cannot have the
+    // iCloud capability, and CloudKit mirroring without the entitlement fails at launch.
+    // The data then stays on the device only (backups in Files still work).
+    static let cloudSyncEnabled = true
+
     static var appGroupContainerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
     }
