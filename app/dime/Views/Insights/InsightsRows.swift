@@ -18,17 +18,21 @@ struct InsightsCategoryRow: View {
             HStack(spacing: 12) {
                 InsightsEmojiTile(emoji: slice.emoji, colour: slice.colour, size: 38)
 
-                VStack(alignment: .leading, spacing: 7) {
+                // Name gets its own line: 7-8 digit UZS amounts used to squeeze it to a few letters.
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(verbatim: slice.name)
+                        .font(.system(.body, design: .rounded).weight(.semibold))
+                        .foregroundColor(Color.PrimaryText)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(verbatim: slice.name)
-                            .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundColor(Color.PrimaryText)
-                            .lineLimit(1)
-
-                        Spacer(minLength: 4)
-
                         AmountText(slice.amount, role: .caption, sign: .never)
                             .layoutPriority(1)
+
+                        Spacer(minLength: 4)
 
                         Text(verbatim: InsightsFormat.percent(slice.share))
                             .font(.system(.footnote, design: .rounded).weight(.semibold))
