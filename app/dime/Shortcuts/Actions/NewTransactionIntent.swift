@@ -19,7 +19,7 @@ struct NewTransactionIntent: AppIntent {
     @Parameter(title: "Type", description: "Type of the transaction", requestValueDialog: IntentDialog("Would you like to log an income or expense?"))
     var income: TransactionType
 
-    @Parameter(title: "Amount", description: "Value of the transaction", controlStyle: .field, inclusiveRange: (lowerBound: 0.01, upperBound: 100_000_000), requestValueDialog: IntentDialog("How much was transacted?"))
+    @Parameter(title: "Amount", description: "Value of the transaction", controlStyle: .field, inclusiveRange: (lowerBound: 0.01, upperBound: 999_999_999_999), requestValueDialog: IntentDialog("How much was transacted?"))
     var amount: Double
 
     @Parameter(title: "Category", description: "Category associated with the transaction", requestValueDialog: IntentDialog("What category does it come under?"))
@@ -99,7 +99,7 @@ struct NewTransactionIntent: AppIntent {
                 if let unwrappedExpenseCategory = expenseCategory {
                     let category = try dataController.findCategory(withId: unwrappedExpenseCategory.id)
 
-                    let transaction = dataController.newTransaction(note: note ?? "", category: category, income: false, amount: amount, date: Date.now, repeatType: repeatType, repeatCoefficient: 1, delay: false)
+                    let transaction = try logTransaction(dataController, category: category, income: false, repeatType: repeatType)
 
                     return .result(dialog: "Expense successfully logged.") {
                         ShortcutTransactionView(transaction: transaction)
@@ -111,7 +111,7 @@ struct NewTransactionIntent: AppIntent {
                 if let unwrappedIncomeCategory = incomeCategory {
                     let category = try dataController.findCategory(withId: unwrappedIncomeCategory.id)
 
-                    let transaction = dataController.newTransaction(note: note ?? "", category: category, income: true, amount: amount, date: Date.now, repeatType: repeatType, repeatCoefficient: 1, delay: false)
+                    let transaction = try logTransaction(dataController, category: category, income: true, repeatType: repeatType)
 
                     return .result(dialog: "Income successfully logged.") {
                         ShortcutTransactionView(transaction: transaction)
@@ -120,6 +120,19 @@ struct NewTransactionIntent: AppIntent {
                     throw $incomeCategory.needsValueError()
                 }
             }
+        }
+    }
+
+    // The dialog must not say "logged" unless the row really reached the store.
+    @MainActor
+    private func logTransaction(_ dataController: DataController, category: Category, income: Bool, repeatType: Int) throws -> Transaction {
+        do {
+            let transaction = try dataController.newTransactionOrThrow(note: note ?? "", category: category, income: income, amount: amount, date: Date.now, repeatType: repeatType, repeatCoefficient: 1)
+            DiagnosticsLog.shared.log("intent", "new transaction saved")
+            return transaction
+        } catch {
+            DiagnosticsLog.shared.log("intent", "new transaction FAILED \(DataController.describe(error as NSError))")
+            throw CustomError.coreDataSave
         }
     }
 
@@ -202,9 +215,9 @@ extension RepeatType: AppEnum {
 struct ShortcutTransactionView: View {
     let transaction: Transaction
 
-    @AppStorage("showCents", store: UserDefaults(suiteName: "group.com.rafaelsoh.dime")) var showCents: Bool = true
+    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
 
-    @AppStorage("currency", store: UserDefaults(suiteName: "group.com.rafaelsoh.dime")) var currency: String = Locale.current.currencyCode!
+    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = Locale.current.currency?.identifier ?? "USD"
 
     var transactionAmountString: String {
         let numberFormatter = NumberFormatter()
