@@ -13,7 +13,8 @@ struct InsightsShareBar: View {
     let selected: InsightsCategoryKey?
     let onSelect: (InsightsShareSegment) -> Void
 
-    private let segmentHeight: CGFloat = 22
+    private let segmentHeight: CGFloat = 18
+    private let selectedHeight: CGFloat = 26
     private let hitHeight: CGFloat = 48
     private let gap: CGFloat = 3
     private let minimumWidth: CGFloat = 14
@@ -46,18 +47,14 @@ struct InsightsShareBar: View {
             let widths = InsightsShareBar.widths(shares: segments.map { $0.share }, available: proxy.size.width,
                                                  gap: gap, minWidth: minimumWidth)
 
-            HStack(spacing: gap) {
+            HStack(alignment: .center, spacing: gap) {
                 ForEach(segments) { segment in
+                    // The selected segment grows a little instead of getting a heavy outline.
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .fill(segment.colour)
-                        .frame(width: segment.id < widths.count ? widths[segment.id] : 0, height: segmentHeight)
-                        .overlay {
-                            if isSelected(segment) {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .strokeBorder(Color.PrimaryText, lineWidth: 1.5)
-                            }
-                        }
-                        .opacity(isDimmed(segment) ? 0.35 : 1)
+                        .frame(width: segment.id < widths.count ? widths[segment.id] : 0,
+                               height: isSelected(segment) ? selectedHeight : segmentHeight)
+                        .opacity(isDimmed(segment) ? 0.3 : 1)
                 }
             }
             .frame(width: proxy.size.width, height: hitHeight, alignment: .leading)

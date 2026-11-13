@@ -25,16 +25,17 @@ struct InsightsCategoryDetailView: View {
             header
 
             InsightsPeriodNavigator(model: model)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 8)
+                .padding(.leading, 30)
+                .padding(.trailing, 20)
+                .padding(.bottom, 6)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 22) {
+                VStack(spacing: 28) {
                     totalCard
                         .padding(.horizontal, 30)
 
                     if detail.rows.isEmpty {
-                        InsightsEmptyPeriodView()
+                        InsightsEmptyPeriodView(onBackToToday: backToToday)
                             .padding(.horizontal, 30)
                     } else {
                         VStack(alignment: .leading, spacing: 8) {
@@ -47,11 +48,10 @@ struct InsightsCategoryDetailView: View {
                                 signed: false,
                                 averageTitle: detail.frame == .year ? "Average per month" : "Average per day",
                                 onSelect: { index in
-                                    bucketFilter = index
+                                    withAnimation(animated ? Animation.snappy(duration: 0.25) : nil) {
+                                        bucketFilter = index
+                                    }
                                     showsAll = false
-                                },
-                                onToggleScale: {
-                                    model.toggleScale()
                                 }
                             )
                         }
@@ -105,17 +105,28 @@ struct InsightsCategoryDetailView: View {
 
     // MARK: Pieces
 
+    private var backToToday: (() -> Void)? {
+        if model.isCurrentPeriod { return nil }
+        let animation: Animation? = animated ? Animation.snappy(duration: 0.3) : nil
+        let target = self.model
+        return {
+            withAnimation(animation) {
+                target.goToCurrent()
+            }
+        }
+    }
+
     private var header: some View {
         HStack(spacing: 10) {
             Button {
-                withAnimation(animated ? Animation.snappy : nil) {
+                withAnimation(animated ? Animation.snappy(duration: 0.3) : nil) {
                     model.closeDetail()
                 }
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(.subheadline, design: .rounded).weight(.bold))
+                    .font(.system(.footnote, design: .rounded).weight(.bold))
                     .foregroundColor(Color.PrimaryText)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 34, height: 34)
                     .background(Color.SecondaryBackground, in: Circle())
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -128,27 +139,28 @@ struct InsightsCategoryDetailView: View {
             Text(verbatim: detail.name)
                 .font(.system(.title2, design: .rounded).weight(.semibold))
                 .foregroundColor(Color.PrimaryText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
                 .accessibilityAddTraits(.isHeader)
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 22)
+        .padding(.leading, 22)
+        .padding(.trailing, 30)
         .padding(.top, 14)
-        .padding(.bottom, 6)
     }
 
+    // Same hero as the main page: on the background, no card.
     private var totalCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(shareText)
                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
                 .foregroundColor(Color.SubtitleText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
-            AmountText(detail.total, size: 40, relativeTo: .largeTitle, weight: .medium, style: .hero,
-                       secondaryRatio: 0.55, sign: .never, animated: true)
+            AmountText(detail.total, size: 44, relativeTo: .largeTitle, weight: .regular, style: .hero,
+                       secondaryRatio: 0.5, sign: .never, animated: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .amountReveal(detail.total, sign: .never)
 
@@ -158,14 +170,14 @@ struct InsightsCategoryDetailView: View {
 
             // Two per line: four amounts in one line would be cut off at 8+ digits.
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: 16) {
                     InsightsStatCell(title: detail.frame == .year ? "Per month" : "Per day") {
                         AmountText(detail.perUnit, role: .caption, sign: .never)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .amountReveal(detail.perUnit, sign: .never)
                     }
 
-                    InsightsStatCell(title: "Transactions") {
+                    InsightsStatCell(title: "Transactions count") {
                         Text(verbatim: String(detail.count))
                             .font(.system(.callout, design: .rounded).weight(.semibold))
                             .monospacedDigit()
@@ -174,14 +186,14 @@ struct InsightsCategoryDetailView: View {
                     }
                 }
 
-                HStack(alignment: .top, spacing: 10) {
-                    InsightsStatCell(title: "Average") {
+                HStack(alignment: .top, spacing: 16) {
+                    InsightsStatCell(title: "Average transaction") {
                         AmountText(detail.average, role: .caption, sign: .never)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .amountReveal(detail.average, sign: .never)
                     }
 
-                    InsightsStatCell(title: "Largest") {
+                    InsightsStatCell(title: "Largest transaction") {
                         AmountText(detail.largest, role: .caption, sign: .never)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .amountReveal(detail.largest, sign: .never)
@@ -190,8 +202,6 @@ struct InsightsCategoryDetailView: View {
             }
             .padding(.top, 4)
         }
-        .padding(16)
-        .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var shareText: LocalizedStringKey {
@@ -217,7 +227,7 @@ struct InsightsCategoryDetailView: View {
 
         return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
-                InsightsSectionHeader(title: "Transactions")
+                InsightsSectionHeader(title: "Transactions", trailing: String(rows.count))
 
                 if noteFilter != nil || bucketFilter != nil {
                     Button {
@@ -315,19 +325,37 @@ struct InsightsPeriodTrend: View {
 }
 
 struct InsightsEmptyPeriodView: View {
+    var onBackToToday: (() -> Void)?
+
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "tray.fill")
-                .font(.system(.title, design: .rounded))
+        VStack(spacing: 10) {
+            Image(systemName: "tray")
+                .font(.system(.title3, design: .rounded).weight(.semibold))
                 .foregroundColor(Color.SubtitleText)
+                .frame(width: 52, height: 52)
+                .background(Color.SecondaryBackground, in: Circle())
+                .accessibilityHidden(true)
 
             Text("No transactions in this period")
                 .font(.system(.body, design: .rounded).weight(.medium))
                 .foregroundColor(Color.SubtitleText)
                 .multilineTextAlignment(.center)
+
+            if let onBackToToday {
+                Button(action: onBackToToday) {
+                    Text("Back to today")
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                        .foregroundColor(Color.PrimaryText)
+                        .padding(.horizontal, 14)
+                        .frame(height: 34)
+                        .background(Color.SecondaryBackground, in: Capsule())
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(InsightsPressStyle())
+            }
         }
-        .opacity(0.8)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 36)
+        .padding(.vertical, 32)
     }
 }

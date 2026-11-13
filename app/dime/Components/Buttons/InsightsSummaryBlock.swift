@@ -8,8 +8,8 @@
 import Foundation
 import SwiftUI
 
-// Full-width Income / Expenses tile of the Net view. Takes the number, not a string,
-// so the amount is grouped and shrinks to the compact form instead of being cut off.
+// Income / Expenses tile of the Net view, two side by side like the original Dime insights cards.
+// Takes the number, not a string, so the amount is grouped and shrinks instead of being cut off.
 struct InsightsSummaryBlockView: View {
     let income: Bool
     let amount: Double
@@ -22,34 +22,36 @@ struct InsightsSummaryBlockView: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: income ? "arrow.up.right" : "arrow.down.right")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(color)
-                    .frame(width: 36, height: 36)
-                    .background(color.opacity(0.23), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: income ? "arrow.up.right" : "arrow.down.right")
+                        .font(.system(.footnote, design: .rounded).weight(.bold))
+                        .foregroundColor(color)
+                        .frame(width: 28, height: 28)
+                        .background(color.opacity(0.18), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-                Text(income ? "Income" : "Expenses")
-                    .font(.system(.body, design: .rounded).weight(.semibold))
-                    .lineLimit(1)
-                    .foregroundColor(Color.PrimaryText)
+                    Text(income ? LocalizedStringKey("Income") : LocalizedStringKey("Expenses"))
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                        .foregroundColor(Color.SubtitleText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
-                Spacer(minLength: 8)
+                    Spacer(minLength: 0)
 
-                AmountText(amount, role: .row, sign: .never)
-                    .layoutPriority(1)
+                    Image(systemName: "chevron.right")
+                        .font(.system(.caption, design: .rounded).weight(.bold))
+                        .foregroundColor(Color.SubtitleText.opacity(0.7))
+                }
 
-                Image(systemName: "chevron.right")
-                    .font(.system(.footnote, design: .rounded).weight(.bold))
-                    .foregroundColor(Color.SubtitleText)
+                AmountText(amount, role: .caption, sign: .never)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-            .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+            .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay {
                 if showOverlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(Color.Outline, lineWidth: 1.3)
                 }
             }

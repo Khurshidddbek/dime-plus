@@ -5,57 +5,47 @@
 
 import SwiftUI
 
-// One big number at a time: the period total, or the selected day / category.
+// The hero of the page, drawn on the background like the Log total: the flow switch as its label,
+// one big number (the period, or the selected day / category), the change and two quiet stats.
 struct InsightsHeadlineCard: View {
     let page: InsightsPage
+    let showsFlowSwitch: Bool
+    let onFlow: (InsightsFlow) -> Void
     let onClear: () -> Void
 
+    private var sign: MoneySign {
+        page.flow == .net ? .always : .never
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(page.scopeTitle)
-                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                        .foregroundColor(Color.SubtitleText)
-                        .lineLimit(1)
-
-                    if let detail = page.scopeDetail {
-                        Text(detail)
-                            .font(.system(.footnote, design: .rounded).weight(.medium))
-                            .foregroundColor(Color.SubtitleText)
-                            .lineLimit(1)
-                    }
+        VStack(alignment: .leading, spacing: 6) {
+            if showsFlowSwitch {
+                InsightsSegmentedControl(items: flowItems, selection: page.flow.rawValue, fillsWidth: false) { value in
+                    onFlow(InsightsFlow(rawValue: value) ?? .expense)
                 }
-
-                Spacer(minLength: 8)
-
-                if page.hasSelection {
-                    Button(action: onClear) {
-                        Image(systemName: "xmark")
-                            .font(.system(.caption, design: .rounded).weight(.bold))
-                            .foregroundColor(Color.SubtitleText)
-                            .frame(width: 28, height: 28)
-                            .background(Color.PrimaryBackground, in: Circle())
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("Clear selection"))
-                }
+                .padding(.leading, -3)
+            } else {
+                Text(verbatim: InsightsFormat.flowTitle(page.flow))
+                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    .foregroundColor(Color.SubtitleText)
+                    .frame(minHeight: 34, alignment: .leading)
             }
-            .frame(minHeight: 44)
 
-            AmountText(page.total, size: 40, relativeTo: .largeTitle, weight: .medium, style: .hero,
-                       secondaryRatio: 0.55, sign: page.flow == .net ? .always : .never, animated: true)
+            if page.hasSelection {
+                scopeChip
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            AmountText(page.total, size: 44, relativeTo: .largeTitle, weight: .regular, style: .hero,
+                       secondaryRatio: 0.5, sign: sign, animated: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .amountReveal(page.total, sign: page.flow == .net ? .always : .never)
+                .amountReveal(page.total, sign: sign)
 
             if let comparison = page.comparison {
                 InsightsComparisonRow(comparison: comparison, lowerIsBetter: page.flow == .expense)
             }
 
-            // Bottom-aligned so the figures stay on one line when a caption wraps.
-            HStack(alignment: .bottom, spacing: 10) {
+            HStack(alignment: .top, spacing: 16) {
                 InsightsStatCell(title: averageTitle) {
                     AmountText(page.average, role: .caption, sign: page.flow == .net ? .automatic : .never)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -68,18 +58,57 @@ struct InsightsHeadlineCard: View {
                         .monospacedDigit()
                         .foregroundColor(Color.PrimaryText)
                         .lineLimit(1)
-                }
-
-                InsightsStatCell(title: "Largest transaction") {
-                    AmountText(page.largest, role: .caption, sign: .never)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .amountReveal(page.largest, sign: .never)
+                        .contentTransition(.numericText())
                 }
             }
             .padding(.top, 4)
         }
-        .padding(16)
-        .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var flowItems: [InsightsSegmentItem] {
+        [
+            InsightsSegmentItem(id: InsightsFlow.expense.rawValue, title: "Expenses"),
+            InsightsSegmentItem(id: InsightsFlow.income.rawValue, title: "Income"),
+            InsightsSegmentItem(id: InsightsFlow.net.rawValue, title: "Net")
+        ]
+    }
+
+    // What the number is narrowed to: the category and / or the day. The cross clears both.
+    private var scopeChip: some View {
+        Button(action: onClear) {
+            HStack(spacing: 6) {
+                if let tint = page.tint {
+                    Circle()
+                        .fill(tint)
+                        .frame(width: 8, height: 8)
+                }
+
+                Text(verbatim: scopeText)
+                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    .foregroundColor(Color.PrimaryText)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                Image(systemName: "xmark")
+                    .font(.system(.caption2, design: .rounded).weight(.bold))
+                    .foregroundColor(Color.SubtitleText)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(Color.SecondaryBackground, in: Capsule())
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(InsightsPressStyle())
+        .accessibilityLabel(Text(verbatim: scopeText))
+        .accessibilityHint(Text("Clear selection"))
+    }
+
+    // Without a category the flow title is already on the switch above, so only the day is shown.
+    private var scopeText: String {
+        let detail = page.scopeDetail ?? ""
+        guard page.tint != nil else { return detail.isEmpty ? page.scopeTitle : detail }
+        return detail.isEmpty ? page.scopeTitle : page.scopeTitle + ", " + detail
     }
 
     private var averageTitle: LocalizedStringKey {
@@ -97,17 +126,16 @@ struct InsightsStatCell<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            // Two lines: a third of the card is narrow for "Daily average" in Russian.
             Text(title)
                 .font(.system(.caption, design: .rounded).weight(.semibold))
                 .foregroundColor(Color.SubtitleText)
-                .lineLimit(2)
+                .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .fixedSize(horizontal: false, vertical: true)
 
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -159,7 +187,7 @@ struct InsightsComparisonRow: View {
                 .foregroundColor(Color.SubtitleText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .frame(minHeight: 44, alignment: .leading)
+                .frame(minHeight: 32, alignment: .leading)
         }
     }
 
@@ -170,7 +198,7 @@ struct InsightsComparisonRow: View {
     private func chip(text: String, isFlat: Bool, isUp: Bool, tint: Color) -> some View {
         HStack(spacing: 3) {
             Image(systemName: isFlat ? "equal" : (isUp ? "arrow.up.right" : "arrow.down.right"))
-                .font(.system(.caption, design: .rounded).weight(.bold))
+                .font(.system(.caption2, design: .rounded).weight(.bold))
 
             Text(verbatim: text)
                 .font(.system(.footnote, design: .rounded).weight(.semibold))
@@ -178,9 +206,9 @@ struct InsightsComparisonRow: View {
                 .lineLimit(1)
         }
         .foregroundColor(tint)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 4)
-        .background(tint.opacity(0.18), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .padding(.horizontal, 8)
+        .frame(height: 24)
+        .background(tint.opacity(0.14), in: Capsule())
         .frame(minHeight: 44)
         .contentShape(Rectangle())
     }

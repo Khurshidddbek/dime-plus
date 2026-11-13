@@ -75,10 +75,14 @@ struct InsightsView: View {
     }
 
     private var spring: Animation? {
-        animated ? Animation.snappy : nil
+        animated ? Animation.snappy(duration: 0.3) : nil
     }
 
     // MARK: Page
+    //
+    // Fixed header: title with the week / month / year menu, then the period with its arrows.
+    // Scrolling content: hero (flow switch, total, change, two stats), chart, categories, and the
+    // transactions of the current selection.
 
     private var mainPage: some View {
         VStack(spacing: 0) {
@@ -91,43 +95,39 @@ struct InsightsView: View {
 
                 Spacer(minLength: 8)
 
-                InsightsSegmentedControl(items: frameItems, selection: model.frame.storedValue, fillsWidth: false) { value in
-                    withAnimation(spring) {
-                        model.setFrame(ChartTimeFrame(storedValue: value))
-                    }
-                }
+                InsightsScopeMenu(model: model)
             }
             .padding(.horizontal, 30)
             .padding(.top, 14)
-            .padding(.bottom, 2)
 
             InsightsPeriodNavigator(model: model)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 8)
+                .padding(.leading, 30)
+                .padding(.trailing, 20)
+                .padding(.bottom, 4)
 
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 22) {
-                        if incomeTracking {
-                            InsightsSegmentedControl(items: flowItems, selection: model.page.flow.rawValue, fillsWidth: true) { value in
+                    VStack(alignment: .leading, spacing: 28) {
+                        InsightsHeadlineCard(
+                            page: model.page,
+                            showsFlowSwitch: incomeTracking,
+                            onFlow: { flow in
                                 withAnimation(spring) {
-                                    model.setFlow(InsightsFlow(rawValue: value) ?? .expense)
+                                    model.setFlow(flow)
+                                }
+                            },
+                            onClear: {
+                                withAnimation(spring) {
+                                    model.clearSelection()
                                 }
                             }
-                            .padding(.horizontal, 30)
-                        }
-
-                        InsightsHeadlineCard(page: model.page) {
-                            withAnimation(spring) {
-                                model.clearSelection()
-                            }
-                        }
+                        )
                         .padding(.horizontal, 30)
                         // No swipe-to-change-period here: any drag recognizer in this ScrollView
                         // blocked page scrolling on device. The arrows above change the period.
 
                         if model.page.periodIsEmpty {
-                            InsightsEmptyPeriodView()
+                            InsightsEmptyPeriodView(onBackToToday: backToToday)
                                 .padding(.horizontal, 30)
                         } else {
                             chartSection
@@ -144,13 +144,11 @@ struct InsightsView: View {
                             if model.page.hasSelection {
                                 selectionSection
                                     .padding(.horizontal, 18)
-                            } else {
-                                highlightsSection
-                                    .padding(.horizontal, 18)
+                                    .transition(.opacity)
                             }
                         }
                     }
-                    .padding(.top, 6)
+                    .padding(.top, 8)
                     // Clears the floating tab bar.
                     .padding(.bottom, 110)
                 }
@@ -158,54 +156,49 @@ struct InsightsView: View {
         }
     }
 
-    private var frameItems: [InsightsSegmentItem] {
-        [
-            InsightsSegmentItem(id: ChartTimeFrame.week.storedValue, title: "Week"),
-            InsightsSegmentItem(id: ChartTimeFrame.month.storedValue, title: "Month"),
-            InsightsSegmentItem(id: ChartTimeFrame.year.storedValue, title: "Year")
-        ]
-    }
-
-    private var flowItems: [InsightsSegmentItem] {
-        [
-            InsightsSegmentItem(id: InsightsFlow.expense.rawValue, title: "Expenses"),
-            InsightsSegmentItem(id: InsightsFlow.income.rawValue, title: "Income"),
-            InsightsSegmentItem(id: InsightsFlow.net.rawValue, title: "Net")
-        ]
+    private var backToToday: (() -> Void)? {
+        if model.isCurrentPeriod { return nil }
+        let animation = spring
+        let target = model
+        return {
+            withAnimation(animation) {
+                target.goToCurrent()
+            }
+        }
     }
 
     // MARK: Sections
 
     private var chartSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            InsightsTrendChart(
-                data: model.page.chart,
-                selected: model.selectedBucket,
-                tint: model.page.tint ?? Color.DarkBackground,
-                signed: model.page.flow == .net,
-                averageTitle: model.page.frame == .year ? "Average per month" : "Average per day",
-                onSelect: { index in
+        InsightsTrendChart(
+            data: model.page.chart,
+            selected: model.selectedBucket,
+            tint: model.page.tint ?? Color.DarkBackground,
+            signed: model.page.flow == .net,
+            averageTitle: model.page.frame == .year ? "Average per month" : "Average per day",
+            onSelect: { index in
+                withAnimation(spring) {
                     model.selectBucket(index)
-                },
-                onToggleScale: {
-                    withAnimation(spring) {
-                        model.toggleScale()
-                    }
                 }
-            )
+            },
+            onOpenSelected: openSelectedMonth
+        )
+    }
 
-            if model.page.frame == .year, model.selectedBucket != nil, let title = model.page.scopeDetail {
-                InsightsWideButton(title: "Open \(title)") {
-                    withAnimation(spring) {
-                        model.openSelectedBucketAsMonth()
-                    }
-                }
+    // Year view only: the callout of a selected month opens that month.
+    private var openSelectedMonth: (() -> Void)? {
+        guard model.page.frame == .year else { return nil }
+        let animation = spring
+        let target = model
+        return {
+            withAnimation(animation) {
+                target.openSelectedBucketAsMonth()
             }
         }
     }
 
     private var netSection: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 10) {
             InsightsSummaryBlockView(income: true, amount: model.page.income, showOverlay: false) {
                 withAnimation(spring) {
                     model.setFlow(.income)
@@ -221,7 +214,7 @@ struct InsightsView: View {
     }
 
     private func categorySection(_ proxy: ScrollViewProxy) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             InsightsSectionHeader(title: "Categories")
                 .padding(.horizontal, 12)
 
@@ -233,40 +226,37 @@ struct InsightsView: View {
                 } else if let first = segment.firstMergedKey {
                     // "Other": show where the merged categories start.
                     Haptics.tap()
-                    withAnimation {
+                    withAnimation(spring) {
                         proxy.scrollTo(first, anchor: .center)
                     }
                 }
             }
             .padding(.horizontal, 12)
+            .padding(.bottom, 4)
 
             VStack(spacing: 2) {
                 ForEach(model.page.slices) { slice in
                     InsightsCategoryRow(
                         slice: slice,
                         isSelected: model.selectedCategory == slice.id,
-                        isDimmed: model.selectedCategory != nil && model.selectedCategory != slice.id
-                    ) {
-                        withAnimation(spring) {
-                            // First tap focuses the page on the category, the second opens its screen.
-                            if model.selectedCategory == slice.id {
-                                model.openDetail(slice.id)
-                            } else {
-                                model.selectCategory(slice.id)
+                        isDimmed: model.selectedCategory != nil && model.selectedCategory != slice.id,
+                        action: {
+                            withAnimation(spring) {
+                                // First tap focuses the page on the category, the second opens its screen.
+                                if model.selectedCategory == slice.id {
+                                    model.openDetail(slice.id)
+                                } else {
+                                    model.selectCategory(slice.id)
+                                }
                             }
-                        }
-                    }
-                    .id(slice.id)
-
-                    if model.selectedCategory == slice.id {
-                        InsightsWideButton(title: "Details and transactions") {
+                        },
+                        onOpen: {
                             withAnimation(spring) {
                                 model.openDetail(slice.id)
                             }
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 6)
-                    }
+                    )
+                    .id(slice.id)
                 }
             }
         }
@@ -278,7 +268,7 @@ struct InsightsView: View {
         let shown = showsAllRows ? rows : Array(rows.prefix(previewCount))
 
         return VStack(alignment: .leading, spacing: 2) {
-            InsightsSectionHeader(title: "Transactions")
+            InsightsSectionHeader(title: "Transactions", trailing: String(rows.count))
                 .padding(.horizontal, 12)
                 .padding(.bottom, 4)
 
@@ -298,40 +288,12 @@ struct InsightsView: View {
             if rows.count > shown.count {
                 InsightsWideButton(title: "Show all") {
                     Haptics.tap()
-                    showsAllRows = true
+                    withAnimation(spring) {
+                        showsAllRows = true
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
-            }
-        }
-    }
-
-    private var highlightsSection: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            if !model.page.biggest.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    InsightsSectionHeader(title: "Largest transactions")
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 4)
-
-                    ForEach(model.page.biggest) { row in
-                        InsightsTransactionRow(row: row, info: model.page.info(for: row.category), showsDay: true) {
-                            open(row)
-                        }
-                    }
-                }
-            }
-
-            if !model.page.notes.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    InsightsSectionHeader(title: "Top notes")
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 4)
-
-                    ForEach(model.page.notes) { note in
-                        InsightsNoteRow(note: note, colour: Color.DarkBackground, isSelected: false, action: nil)
-                    }
-                }
             }
         }
     }
