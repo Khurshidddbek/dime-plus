@@ -66,29 +66,40 @@ struct SettingsNotificationsView: View {
               center.getNotificationSettings { settings in
                 if settings.authorizationStatus == .notDetermined {
                   center.requestAuthorization(options: [.alert, .badge, .sound]) { success, error in
-                    if success {
-                      withAnimation(.easeInOut(duration: 0.2)) {
-                        showNotifications.toggle()
-                        newNotification()
+                    // These callbacks arrive on a background queue.
+                    DispatchQueue.main.async {
+                      if success {
+                        Haptics.tap()
+
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                          showNotifications = true
+                          newNotification()
+                        }
+                      } else {
+                        if let error = error {
+                          DiagnosticsLog.shared.log("notifications", "permission request failed: \(error.localizedDescription)")
+                        }
+
+                        notificationsEnabled = false
+                        ToastCenter.shared.info(String(localized: "Notifications are off for Dime in the iOS Settings"))
                       }
-                    } else if let error = error {
-                      print(error.localizedDescription)
-                      notificationsEnabled = false
                     }
                   }
                 } else if settings.authorizationStatus == .denied {
-                  notificationsEnabled = false
-
                   DispatchQueue.main.async {
+                    notificationsEnabled = false
+
                     if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
                       UIApplication.shared.open(settingsURL)
                     }
                   }
 
                 } else {
-                  withAnimation(.easeInOut(duration: 0.2)) {
-                    showNotifications.toggle()
-                    if showNotifications {
+                  DispatchQueue.main.async {
+                    Haptics.tap()
+
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                      showNotifications = true
                       newNotification()
                     }
                   }

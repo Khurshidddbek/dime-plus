@@ -11,7 +11,6 @@ import SwiftUI
 struct SettingsHapticsView: View {
     @AppStorage("haptics", store: UserDefaults.appGroup)
     var hapticType: Int = 1
-    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
 
     let options = ["None", "Subtle", "Excessive"]
 
@@ -22,50 +21,50 @@ struct SettingsHapticsView: View {
 
     @State var wordShake: Bool = false
 
+    private var explanation: LocalizedStringKey {
+        switch hapticType {
+        case 0:
+            return "No vibration anywhere in the app."
+        case 2:
+            return "Everything in Subtle, plus a tick for every key of the number pad."
+        default:
+            return "A light tap for buttons, switches and pickers, and a stronger one for saves, errors and deletes."
+        }
+    }
+
     var body: some View {
         VStack(spacing: 10) {
-            Text("Haptic Feedback")
-                .font(.system(.title3, design: .rounded).weight(.semibold))
-                .foregroundColor(Color.PrimaryText)
-                .frame(maxWidth: .infinity)
-                .overlay(alignment: .leading) {
-                    Button {
-                        self.presentationMode.wrappedValue.dismiss()
-                    } label: {
-                        SettingsBackButton()
-                    }
-                }
-                .padding(.bottom, 20)
+            SettingsSubviewHeader(title: "Haptic Feedback")
+                .padding(.bottom, 10)
 
             VStack(spacing: 0) {
                 ForEach(options.indices, id: \.self) { option in
-                    HStack {
-                        Text(LocalizedStringKey(options[option]))
-                            .font(.system(.body, design: .rounded))
-                            .foregroundColor(Color.PrimaryText)
-
-                        Spacer()
-
-                        if hapticType == option {
-                            Image(systemName: "checkmark")
-                                .font(.system(.subheadline, design: .rounded))
-                                .foregroundColor(.DarkIcon.opacity(0.6))
-                                .matchedGeometryEffect(id: "tick", in: animation)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
-                    .offset(x: wordShake && option == 1 ? -5 : 0)
-                    .onTapGesture {
+                    Button {
                         withAnimation(.easeIn(duration: 0.15)) {
                             hapticType = option
                         }
+                    } label: {
+                        HStack {
+                            Text(LocalizedStringKey(options[option]))
+                                .font(.system(.body, design: .rounded))
+                                .foregroundColor(Color.PrimaryText)
 
-//                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-//                            self.presentationMode.wrappedValue.dismiss()
-//                        }
+                            Spacer()
+
+                            if hapticType == option {
+                                Image(systemName: "checkmark")
+                                    .font(.system(.subheadline, design: .rounded))
+                                    .foregroundColor(.DarkIcon.opacity(0.6))
+                                    .matchedGeometryEffect(id: "tick", in: animation)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 26)
+                        .contentShape(Rectangle())
+                        .offset(x: wordShake && option == 1 ? -5 : 0)
+                        .padding(.vertical, 9)
                     }
-                    .padding(.vertical, 9)
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(hapticType == option ? .isSelected : [])
                     .overlay(alignment: .bottom) {
                         if option < (options.count - 1) {
                             Divider()
@@ -78,16 +77,14 @@ struct SettingsHapticsView: View {
             .offset(x: shake ? -5 : 5)
             .offset(x: alternateShake ? 0 : -5)
 
-            Text("The 'Excessive' mode makes the entire numpad haptic.")
-                .font(.system(.caption, design: .rounded).weight(.medium))
-                .foregroundColor(Color.SubtitleText)
-                .padding(.horizontal, 15)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            SettingsFootnote(text: explanation)
         }
         .modifier(SettingsSubviewModifier())
         .onChange(of: hapticType) { newValue in
+            // Played through the central helper, so the preview is what the new level really does
+            // (nothing at all for None).
             if newValue == 2 {
-                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                Haptics.impact(.heavy)
 
                 withAnimation(.easeInOut(duration: 0.1)) {
                     alternateShake = true
@@ -102,7 +99,7 @@ struct SettingsHapticsView: View {
                     }
                 }
             } else if newValue == 1 {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                Haptics.tap()
 
                 withAnimation(.easeInOut(duration: 0.1).repeatCount(5)) {
                     wordShake = true

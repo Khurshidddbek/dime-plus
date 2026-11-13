@@ -51,6 +51,8 @@ struct SettingsAppearanceView: View {
           .frame(maxWidth: .infinity)
           .contentShape(Rectangle())
           .onTapGesture {
+            Haptics.selection()
+
             withAnimation(.easeIn(duration: 0.15)) {
               colourScheme = option
             }
@@ -70,11 +72,6 @@ struct SettingsAppearanceView: View {
       .padding(.horizontal, 15)
       .background(Color.SettingsBackground, in: RoundedRectangle(cornerRadius: 9))
 
-      Text("Close and reload app for change to take effect.")
-        .font(.system(.caption, design: .rounded).weight(.medium))
-        .foregroundColor(Color.SubtitleText)
-        .padding(.horizontal, 15)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
     .modifier(SettingsSubviewModifier())
   }

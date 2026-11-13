@@ -86,14 +86,13 @@ struct SettingsWeekStartView: View {
           .frame(maxWidth: .infinity)
           .contentShape(Rectangle())
           .onTapGesture {
+            Haptics.selection()
+
+            // No auto-close: the month start below is on the same screen.
             DispatchQueue.main.async {
               withAnimation(.easeIn(duration: 0.15)) {
                 firstWeekday = (option + 1)
               }
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-              self.presentationMode.wrappedValue.dismiss()
             }
           }
           .padding(.vertical, 9)
@@ -136,14 +135,12 @@ struct SettingsWeekStartView: View {
               .frame(maxWidth: .infinity)
               .contentShape(Rectangle())
               .onTapGesture {
+                Haptics.selection()
+
                 DispatchQueue.main.async {
                   withAnimation(.easeIn(duration: 0.15)) {
                     firstDayOfMonth = day
                   }
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                  self.presentationMode.wrappedValue.dismiss()
                 }
               }
               .padding(.vertical, 9)
@@ -183,6 +180,6 @@ struct SettingsWeekStartView: View {
     let formatter = NumberFormatter()
     formatter.numberStyle = .ordinal
 
-    return formatter.string(from: number as NSNumber)!.replacingOccurrences(of: ".", with: "")
+    return (formatter.string(from: number as NSNumber) ?? "\(number)").replacingOccurrences(of: ".", with: "")
   }
 }

@@ -25,9 +25,9 @@ struct SettingsGoofyView: View {
   @AppStorage("swapTimeLabel", store: UserDefaults.appGroup)
   var swapTimeLabel: Bool = false
 
-  @AppStorage(
-    "showTransactionRecommendations", store: UserDefaults.appGroup)
-  var showRecommendations: Bool = false
+  // The key the entry screen reads (the old "showTransactionRecommendations" is not read any more).
+  @AppStorage("noteSuggestionsEnabled", store: UserDefaults.appGroup)
+  var showRecommendations: Bool = true
 
   @Namespace var animation
 
@@ -85,7 +85,7 @@ struct SettingsGoofyView: View {
           .background(Color.SettingsBackground, in: RoundedRectangle(cornerRadius: 9))
 
         Text(
-          "Displays transaction suggestions whilst you type in the 'Note' field of the new transaction page."
+          "Shows notes from your history while you type in the 'Note' field. Picking one also sets its category."
         )
         .font(.system(.caption, design: .rounded).weight(.medium))
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -112,7 +112,7 @@ struct SettingsGoofyView: View {
   @ViewBuilder
   func ToggleRow(text: String, bool: Binding<Bool>, id: Int) -> some View {
     HStack {
-      Text(text)
+      Text(LocalizedStringKey(text))
         .font(.system(.body, design: .rounded))
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         //                .font(.system(size: 17, weight: .regular, design: .rounded))
@@ -131,14 +131,21 @@ struct SettingsGoofyView: View {
           .frame(width: 28, height: 28)
           .matchedGeometryEffect(id: "toggle\(id)", in: animation)
       }
-      .onTapGesture {
-        withAnimation {
-          bool.wrappedValue.toggle()
-        }
-      }
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 9)
     .padding(.horizontal, 15)
+    // The whole row is the target, not only the 28 pt capsule.
+    .contentShape(Rectangle())
+    .onTapGesture {
+      Haptics.tap()
+
+      withAnimation {
+        bool.wrappedValue.toggle()
+      }
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityAddTraits(.isButton)
+    .accessibilityValue(bool.wrappedValue ? Text("On") : Text("Off"))
   }
 }

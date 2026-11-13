@@ -6,9 +6,7 @@
 //
 
 import Combine
-import ConfettiSwiftUI
 import Foundation
-import StoreKit
 import SwiftUI
 import UserNotifications
 import WidgetKit
@@ -73,28 +71,12 @@ struct SettingsView: View {
   @EnvironmentObject var appLockVM: AppLockViewModel
   @Namespace var animation
 
-  var iCloudString: String {
-    if NSUbiquitousKeyValueStore.default.bool(forKey: "icloud_sync") {
-      return String(localized: "On")
-    } else {
-      return String(localized: "Off")
-    }
-  }
-
-  @Environment(\.openURL) var openURL
-  let supportEmail = SupportEmail(toAddress: "rafasohhh@gmail.com", subject: "Support Email")
-  let featureRequestEmail = SupportEmail(
-    toAddress: "rafasohhh@gmail.com", subject: "Feature Request")
-
+  // Same default as the pad itself (NumberPad.swift).
   @AppStorage("numberEntryType", store: UserDefaults.appGroup)
-  var numberEntryType: Int = 2
+  var numberEntryType: Int = 1
 
   var numberEntryString: String {
-    if numberEntryType == 1 {
-      return String(localized: "Type 1")
-    } else {
-      return String(localized: "Type 2")
-    }
+    NumberEntryOption.stored(numberEntryType).shortName
   }
 
   @AppStorage("showCents", store: UserDefaults.appGroup)
@@ -137,15 +119,35 @@ struct SettingsView: View {
       }
     }
 
+  /// Currencies without small change: decimals and the entry method are fixed, so their rows are hidden.
+  private var isZeroDecimal: Bool {
+    MoneyFormat.isZeroDecimal(currency)
+  }
+
   // popups
 
-  @State var showTipJarMenu = false
   @State var showImportGuide = false
+  @State var showExport = false
   @State var showUpdate: Bool = false
+
+  // Values on the right of the Data rows. Refreshed on appear and when a backup is written.
+  @State private var cloudText = ""
+  @State private var lastBackupText = ""
+
+  @ObservedObject private var trash = TrashStore.shared
 
   @EnvironmentObject var tabBarManager: TabBarManager
 
   @EnvironmentObject var dataController: DataController
+
+  /// SLOT: SMS import. It sits in the DATA card above "Import Data".
+  /// Colour sets 128 to 130 and 115 are free.
+  @ViewBuilder
+  var smsSettingsEntry: some View {
+    NavigationLink(destination: SMSSettingsView()) {
+      SettingsRowView(systemImage: "message.fill", title: "Bank SMS", colour: 127)
+    }
+  }
 
   var body: some View {
     NavigationView {
@@ -186,22 +188,24 @@ struct SettingsView: View {
                   optionalText: currency)
               }
 
-              NavigationLink(
-                destination: SettingsNumberEntryView()
-                  .onAppear {
-                    withAnimation(.easeOut.speed(1.5)) {
-                      tabBarManager.navigationHideTab()
+              if !isZeroDecimal {
+                NavigationLink(
+                  destination: SettingsNumberEntryView()
+                    .onAppear {
+                      withAnimation(.easeOut.speed(1.5)) {
+                        tabBarManager.navigationHideTab()
+                      }
                     }
-                  }
-                  .onDisappear {
-                    withAnimation(.easeOut.speed(1.5)) {
-                      tabBarManager.navigationShowTab()
+                    .onDisappear {
+                      withAnimation(.easeOut.speed(1.5)) {
+                        tabBarManager.navigationShowTab()
+                      }
                     }
-                  }
-              ) {
-                SettingsRowView(
-                  systemImage: "keyboard.fill", title: "Number Entry", colour: 104,
-                  optionalText: numberEntryString)
+                ) {
+                  SettingsRowView(
+                    systemImage: "keyboard.fill", title: "Number Entry", colour: 104,
+                    optionalText: numberEntryString)
+                }
               }
 
               ToggleRow(
@@ -266,11 +270,13 @@ struct SettingsView: View {
                   optionalText: appIconString)
               }
 
-              ToggleRow(
-                icon: "centsign.circle.fill", color: "107", text: "Display Cents", bool: showCents,
-                onTap: {
-                  showCents.toggle()
-                })
+              if !isZeroDecimal {
+                ToggleRow(
+                  icon: "centsign.circle.fill", color: "107", text: "Display Cents", bool: showCents,
+                  onTap: {
+                    showCents.toggle()
+                  })
+              }
 
               NavigationLink(destination: SettingsUpcomingView()) {
                 SettingsRowView(
@@ -296,15 +302,6 @@ struct SettingsView: View {
           }
           .padding(.horizontal, 20)
           .padding(.bottom, 25)
-          .onChange(of: currency) { _ in
-            WidgetCenter.shared.reloadAllTimelines()
-          }
-          .onChange(of: firstWeekday) { _ in
-            WidgetCenter.shared.reloadAllTimelines()
-          }
-          .onChange(of: showCents) { _ in
-            WidgetCenter.shared.reloadAllTimelines()
-          }
 
           VStack(spacing: 5) {
             Text("DATA")
@@ -337,13 +334,27 @@ struct SettingsView: View {
               NavigationLink(destination: SettingsCloudView()) {
                 SettingsRowView(
                   systemImage: "icloud.fill", title: "iCloud Sync", colour: 111,
-                  optionalText: iCloudString)
+                  optionalText: cloudText)
+              }
+
+              NavigationLink(destination: SettingsBackupsView()) {
+                SettingsRowView(
+                  systemImage: "externaldrive.fill.badge.timemachine", title: "Backups", colour: 124,
+                  optionalText: lastBackupText)
+              }
+
+              NavigationLink(destination: SettingsTrashView()) {
+                SettingsRowView(
+                  systemImage: "arrow.uturn.backward.circle.fill", title: "Recently deleted", colour: 125,
+                  optionalText: trash.items.isEmpty ? nil : MoneyFormat.number(Double(trash.items.count)))
               }
 
               //
               //                            NavigationLink(destination: SettingsQuickAddWidgetView()) {
               //                                SettingsRowView(systemImage: "bolt.square.fill", title: "Quick-Add Widget", colour: 115)
               //                            }
+
+              smsSettingsEntry
 
               Button {
                 showImportGuide = true
@@ -353,10 +364,15 @@ struct SettingsView: View {
               }
 
               Button {
-                exportData()
+                Haptics.tap()
+                showExport = true
               } label: {
                 SettingsRowView(
                   systemImage: "square.and.arrow.up.fill", title: "Export Data", colour: 113)
+              }
+
+              NavigationLink(destination: SettingsDiagnosticsView()) {
+                SettingsRowView(systemImage: "stethoscope", title: "Diagnostics", colour: 126)
               }
 
               NavigationLink(destination: SettingsEraseView()) {
@@ -388,58 +404,6 @@ struct SettingsView: View {
 
               NavigationLink(destination: SettingsGoofyView()) {
                 SettingsRowView(systemImage: "flame.fill", title: "Feature Lab", colour: 122)
-              }
-
-              Button {
-                showTipJarMenu = true
-              } label: {
-                SettingsRowView(systemImage: "heart.fill", title: "Tip Jar", colour: 123)
-              }
-
-              Button {
-                supportEmail.send(openURL: openURL)
-              } label: {
-                SettingsRowView(systemImage: "ladybug.fill", title: "Report Bug", colour: 124)
-              }
-
-              Button {
-                featureRequestEmail.send(openURL: openURL)
-              } label: {
-                SettingsRowView(
-                  systemImage: "hand.wave.fill", title: "Feature Request", colour: 125)
-              }
-
-              Button {
-                let url = "https://apps.apple.com/app/id1635280255?action=write-review"
-                guard let writeReviewURL = URL(string: url)
-                else { fatalError("Expected a valid URL") }
-                UIApplication.shared.open(writeReviewURL, options: [:], completionHandler: nil)
-              } label: {
-                SettingsRowView(systemImage: "star.fill", title: "Rate on App Store", colour: 126)
-              }
-
-              Button {
-                shareSheet(url: "https://apps.apple.com/app/id1635280255")
-              } label: {
-                SettingsRowView(systemImage: "shareplay", title: "Share with Friends", colour: 127)
-              }
-
-              Button {
-                if let url = URL(string: "https://www.x.com/budgetwithdime") {
-                  UIApplication.shared.open(url)
-                }
-              } label: {
-                SettingsRowView(systemImage: "bird.fill", title: "Follow Dime on X", colour: 128)
-                  .frame(maxWidth: .infinity)
-              }
-
-              Button {
-                if let url = URL(string: "https://www.x.com/rarfell") {
-                  UIApplication.shared.open(url)
-                }
-              } label: {
-                SettingsRowView(
-                  systemImage: "camera.fill", title: "Follow Rafael on X", colour: 129)
               }
             }
             .padding(10)
@@ -485,14 +449,20 @@ struct SettingsView: View {
       .navigationBarTitle("")
       .navigationBarHidden(true)
       .background(Color.PrimaryBackground)
-      .fullScreenCover(isPresented: $showTipJarMenu) {
-        TipJarAlert()
+      .fullScreenCover(isPresented: $showExport) {
+        ExportDataCard()
       }
       .fullScreenCover(isPresented: $showUpdate) {
         UpdateAlert()
       }
       .fullScreenCover(isPresented: $showImportGuide) {
         ImportDataView()
+      }
+      .onAppear {
+        refreshDataRows()
+      }
+      .onReceive(NotificationCenter.default.publisher(for: BackupStore.didChangeNotification)) { _ in
+        refreshDataRows()
       }
     }
   }
@@ -510,9 +480,10 @@ struct SettingsView: View {
         )
         .background(Color(color), in: RoundedRectangle(cornerRadius: 6))
 
-      Text(text)
+      Text(LocalizedStringKey(text))
         .font(.system(.body, design: .rounded).weight(.medium))
         .lineLimit(1)
+        .minimumScaleFactor(0.8)
         .foregroundColor(Color.PrimaryText)
 
       Spacer()
@@ -528,13 +499,30 @@ struct SettingsView: View {
           .frame(width: 28, height: 28)
           .matchedGeometryEffect(id: "toggle\(color)", in: animation)
       }
-      .onTapGesture {
-        withAnimation {
-          onTap()
-        }
-      }
     }
     .frame(maxWidth: .infinity)
+    // The whole row is the target, not only the 28 pt capsule.
+    .contentShape(Rectangle())
+    .onTapGesture {
+      Haptics.tap()
+
+      withAnimation {
+        onTap()
+      }
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityAddTraits(.isButton)
+    .accessibilityValue(bool ? Text("On") : Text("Off"))
+  }
+
+  private func refreshDataRows() {
+    cloudText = CloudSyncStatus.current(dataController).shortText
+
+    if let newest = BackupStore.shared.list().first, newest.createdAt != Date.distantPast {
+      lastBackupText = CloudSyncStatus.dateText(newest.createdAt)
+    } else {
+      lastBackupText = String(localized: "Never")
+    }
   }
 
   func makeAttributedString() -> AttributedString {
@@ -544,297 +532,8 @@ struct SettingsView: View {
 
     return string
   }
-
-  func shareSheet(url: String) {
-    let url = URL(string: url)
-    let activityView = UIActivityViewController(activityItems: [url!], applicationActivities: nil)
-
-    let allScenes = UIApplication.shared.connectedScenes
-    let scene = allScenes.first { $0.activationState == .foregroundActive }
-
-    if let windowScene = scene as? UIWindowScene {
-      windowScene.keyWindow?.rootViewController?.present(
-        activityView, animated: true, completion: nil)
-    }
-  }
-
-  func exportData() {
-    let fetchRequest = dataController.fetchRequestForExport()
-    let transactions = dataController.results(for: fetchRequest)
-
-    let fileName = "export.csv"
-    let path = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
-    var csvText = "Date,Note,Amount,Category,Type\n"
-
-    for transaction in transactions {
-      var string = transaction.wrappedNote
-      let type: String
-
-      if transaction.income {
-        type = "Income"
-      } else {
-        type = "Expense"
-      }
-
-      string.removeAll(where: { $0 == "," })
-
-      csvText +=
-        "\(transaction.wrappedDate),\(string),\(String(format: "%.2f", transaction.wrappedAmount)),\(transaction.category?.wrappedName ?? ""),\(type)\n"
-    }
-
-    do {
-      try csvText.write(to: path!, atomically: true, encoding: String.Encoding.utf8)
-    } catch {
-      print("\(error)")
-    }
-
-    var filesToShare = [Any]()
-    filesToShare.append(path!)
-
-    let av = UIActivityViewController(activityItems: filesToShare, applicationActivities: nil)
-
-    let allScenes = UIApplication.shared.connectedScenes
-    let scene = allScenes.first { $0.activationState == .foregroundActive }
-
-    if let windowScene = scene as? UIWindowScene {
-      windowScene.keyWindow?.rootViewController?.present(av, animated: true, completion: nil)
-    }
-  }
 }
 
-struct TipJarAlert: View {
-  @Environment(\.dismiss) var dismiss
-  @Environment(\.colorScheme) var systemColorScheme
-  @EnvironmentObject var unlockManager: UnlockManager
-
-  @State private var offset: CGFloat = 0
-
-  @AppStorage("bottomEdge", store: UserDefaults.appGroup)
-  var bottomEdge: Double = 15
-
-  @State var opacity = 0.0
-  @State var counter = 0
-
-  var bottomCaption: String {
-    if unlockManager.failedTransaction {
-      return "Tip failed to go through, please try again!"
-    } else if unlockManager.purchaseCount > 0 {
-      return "Thanks a million, \(Image(systemName: "heart.fill")) Rafael"
-    } else {
-      return "Have a great day ahead!"
-    }
-  }
-
-  //    var sortedProducts: [SKProduct] {
-  //        let holding = unlockManager.loadedProducts.sorted {
-  //            $0.price.doubleValue > $1.price.doubleValue
-  //        }
-  //
-  //        return holding
-  //    }
-
-  var body: some View {
-    ZStack(alignment: .bottom) {
-      Color.PrimaryBackground.opacity(opacity)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .onTapGesture {
-          withAnimation(.easeIn(duration: 0.15)) {
-            opacity = 0
-            offset += 300
-          }
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            dismiss()
-          }
-        }
-        .onAppear {
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            withAnimation {
-              opacity = 0.4
-            }
-          }
-        }
-
-      VStack {
-        switch unlockManager.requestState {
-        case .loading:
-          ProgressView {
-            Text("Loading")
-              .font(.system(.body, design: .rounded).weight(.medium))
-              //                            .font(.system(size: 18, weight: .medium, design: .rounded))
-              .foregroundColor(Color.SubtitleText)
-              .frame(maxWidth: .infinity)
-              .frame(height: 200)
-          }
-        case .failed:
-          Text("Unable to load tip options, please try again later 🥲")
-            .font(.system(.body, design: .rounded).weight(.medium))
-
-            //                        .font(.system(size: 18, weight: .medium, design: .rounded))
-            .multilineTextAlignment(.center)
-            .foregroundColor(Color.SubtitleText)
-            .frame(maxWidth: .infinity)
-            .frame(height: 200)
-        default:
-          VStack(alignment: .leading, spacing: 4) {
-            HStack {
-              Image(systemName: "heart.fill")
-                .font(.system(.callout, design: .rounded))
-
-              //                                .font(.system(size: 16))
-              Text("Tip Jar")
-                .font(.system(.title2, design: .rounded).weight(.medium))
-
-              //                                .font(.system(size: 22, weight: .medium, design: .rounded))
-            }
-            .foregroundColor(.PrimaryText)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .trailing) {
-              Button {
-                withAnimation(.easeIn(duration: 0.15)) {
-                  opacity = 0
-                  offset += 300
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                  dismiss()
-                }
-              } label: {
-                Image(systemName: "xmark")
-                  .font(.system(.subheadline, design: .rounded).weight(.semibold))
-
-                  //                                    .font(.system(size: 14, weight: .semibold))
-                  .foregroundColor(Color.SubtitleText)
-                  .padding(7)
-                  .background(Color.SecondaryBackground, in: Circle())
-                  .contentShape(Circle())
-              }
-              .offset(x: 5, y: -5)
-            }
-
-            Text(
-              "Hey! Dime was built by a solo student developer, and is intended to be completely free-of-charge, with no paywalls or ads. If you enjoy using Dime and want to support development, please consider a small tip."
-            )
-            .font(.system(.callout, design: .rounded).weight(.medium))
-
-            //                            .font(.system(size: 16, weight: .medium, design: .rounded))
-            .foregroundColor(.SubtitleText)
-            .padding(.bottom, 20)
-
-            ProductView(
-              products: unlockManager.loadedProducts.sorted {
-                $0.price.doubleValue < $1.price.doubleValue
-              }
-            )
-            .padding(.bottom, 20)
-
-            Text(bottomCaption)
-              .font(.system(.subheadline, design: .rounded).weight(.medium))
-
-              //                                .font(.system(size: 14, weight: .medium, design: .rounded))
-              .frame(maxWidth: .infinity)
-              .foregroundColor(.SubtitleText)
-          }
-        }
-      }
-      .padding(18)
-      .animation(.easeInOut, value: unlockManager.failedTransaction)
-      .background(
-        RoundedRectangle(cornerRadius: 13).fill(Color.PrimaryBackground).shadow(
-          color: systemColorScheme == .dark ? Color.clear : Color.gray.opacity(0.25), radius: 6)
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: 13).stroke(
-          systemColorScheme == .dark ? Color.gray.opacity(0.1) : Color.clear, lineWidth: 1.3)
-      )
-      .offset(y: offset)
-      .confettiCannon(
-        counter: $counter, num: 50, openingAngle: Angle(degrees: 0),
-        closingAngle: Angle(degrees: 360), radius: 200
-      )
-      .gesture(
-        DragGesture()
-          .onChanged { gesture in
-            if gesture.translation.height < 0 {
-              offset = gesture.translation.height / 3
-            } else {
-              offset = gesture.translation.height
-            }
-          }
-          .onEnded { value in
-            if value.translation.height > 30 {
-              withAnimation(.easeIn(duration: 0.15)) {
-                opacity = 0
-                offset += 300
-              }
-              DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                dismiss()
-              }
-
-            } else {
-              withAnimation {
-                offset = 0
-              }
-            }
-          }
-      )
-      .padding(.horizontal, 17)
-      .padding(.bottom, bottomEdge == 0 ? 13 : bottomEdge)
-      .onChange(of: unlockManager.purchaseCount) { _ in
-        counter += 1
-      }
-    }
-    .edgesIgnoringSafeArea(.all)
-    .background(BackgroundBlurView())
-  }
-}
-
-struct ProductView: View {
-  @EnvironmentObject var unlockManager: UnlockManager
-  let products: [SKProduct]
-
-  var body: some View {
-    VStack {
-      ForEach(products, id: \.self) { product in
-        HStack {
-          Text(getText(product.productIdentifier))
-
-          Spacer()
-
-          Button {
-            unlock(product)
-          } label: {
-            Text(product.localizedPrice)
-              .monospacedDigit()
-              .padding(6)
-              .background(
-                Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-              )
-          }
-        }
-      }
-    }
-    .foregroundColor(.PrimaryText)
-    .font(.system(.body, design: .rounded).weight(.semibold))
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-    //        .font(.system(size: 18, weight: .semibold, design: .rounded))
-  }
-
-  func unlock(_ product: SKProduct) {
-    unlockManager.buy(product: product)
-  }
-
-  func getText(_ string: String) -> String {
-    if string == "\(AppIdentifiers.bundleID).smalltip" {
-      return String(localized: "☕ Coffee-Sized Tip")
-    } else if string == "\(AppIdentifiers.bundleID).mediumtip" {
-      return String(localized: "🌮 Taco-Sized Tip")
-    } else if string == "\(AppIdentifiers.bundleID).largetip" {
-      return String(localized: "🍕 Pizza-Sized Tip")
-    } else {
-      return ""
-    }
-  }
-}
 
 struct SettingsRowView: View {
   var systemImage: String
@@ -867,11 +566,11 @@ struct SettingsRowView: View {
 
       Spacer()
 
-      if optionalText != nil {
-        Text(optionalText!)
+      if let optionalText = optionalText {
+        Text(optionalText)
           .font(.system(.body, design: .rounded))
-
-          //                    .font(.system(size: 17, weight: .regular, design: .rounded))
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
           .foregroundColor(.DarkIcon.opacity(0.6))
           .layoutPriority(1)
           .padding(.trailing, -8)
