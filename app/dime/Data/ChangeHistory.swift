@@ -38,7 +38,7 @@ struct ChangeRecord: Codable, Identifiable, Equatable {
     var id: UUID
     var at: Date
     var kind: Kind
-    /// manual, shortcut, recurring, trash, sms, sms-auto, import, restore, icloud, system
+    /// manual, shortcut, recurring, trash, history, sms, sms-auto, import, restore, icloud, system
     var source: String
     /// Raw context name, for diagnostics.
     var origin: String?
@@ -72,6 +72,8 @@ final class ChangeHistory: ObservableObject {
         static let shortcut = "shortcut"
         static let recurring = "recurring"
         static let trash = "trash"
+        /// Deleted or restored from the change history screen.
+        static let history = "history"
         static let sms = "sms"
         static let smsAuto = "sms-auto"
         static let importing = "import"
@@ -103,6 +105,9 @@ final class ChangeHistory: ObservableObject {
 
     private let pendingLock = NSLock()
     private var pending = [ObjectIdentifier: [ChangeRecord]]()
+
+    /// Set by `withSource` around a view-context save. Main thread only.
+    private var sourceOverride: String?
 
     private var observers = [NSObjectProtocol]()
     private var started = false
@@ -160,6 +165,17 @@ final class ChangeHistory: ObservableObject {
         ioQueue.async { [weak self] in
             self?.load()
         }
+    }
+
+    /// Every view-context save made inside `body` is recorded with `source`. All view-context saves
+    /// look like manual ones, so a screen that deletes or restores through TrashStore says where it was.
+    /// Main thread only; the save happens synchronously inside `body`.
+    @discardableResult
+    func withSource<T>(_ source: String, _ body: () throws -> T) rethrows -> T {
+        let previous = sourceOverride
+        sourceOverride = source
+        defer { sourceOverride = previous }
+        return try body()
     }
 
     // MARK: capture
@@ -239,7 +255,8 @@ final class ChangeHistory: ObservableObject {
         let name = context.name ?? ""
         let author = context.transactionAuthor ?? ""
         let isViewContext = name == "view"
-        let baseSource = Self.source(name: name, author: author)
+        let forced = isViewContext && Thread.isMainThread ? sourceOverride : nil
+        let baseSource = forced ?? Self.source(name: name, author: author)
         let now = Date()
 
         var trashIDs = Set<UUID>()
@@ -286,7 +303,7 @@ final class ChangeHistory: ObservableObject {
             if isViewContext {
                 if let id = values.id, trashIDs.contains(id) {
                     kind = .restored
-                    source = Source.trash
+                    source = forced ?? Source.trash
                 } else if generatesRecurring, row.onceRecurring {
                     source = Source.recurring
                 } else if isBackground {

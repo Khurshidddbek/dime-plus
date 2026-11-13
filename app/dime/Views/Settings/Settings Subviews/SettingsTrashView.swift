@@ -12,6 +12,7 @@ struct SettingsTrashView: View {
     @EnvironmentObject var trash: TrashStore
 
     @State private var confirmEmpty = false
+    @State private var confirmRestore = false
 
     private var isEmpty: Bool {
         trash.items.isEmpty && trash.categories.isEmpty
@@ -45,13 +46,15 @@ struct SettingsTrashView: View {
                     VStack(spacing: 10) {
                         HStack(spacing: 10) {
                             SettingsActionButton(title: "Restore all", systemImage: "arrow.uturn.backward") {
-                                restoreAll()
+                                confirmRestore = true
                             }
 
                             SettingsActionButton(title: "Delete all", systemImage: "trash", destructive: true) {
                                 confirmEmpty = true
                             }
                         }
+                        // Keeps the first buttons clear of the back button, so a tap there is not a restore.
+                        .padding(.top, 14)
 
                         SettingsFootnote(text: "Deleted transactions stay here for 30 days and can be restored.")
                             .padding(.bottom, 8)
@@ -100,7 +103,14 @@ struct SettingsTrashView: View {
         .onAppear {
             trash.purgeExpired()
         }
-        .confirmationDialog("Delete everything here forever?", isPresented: $confirmEmpty, titleVisibility: .visible) {
+        .confirmationDialog(restoreTitle, isPresented: $confirmRestore, titleVisibility: .visible) {
+            Button("Restore all") {
+                restoreAll()
+            }
+
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog(emptyTitle, isPresented: $confirmEmpty, titleVisibility: .visible) {
             Button("Delete forever", role: .destructive) {
                 trash.empty()
                 Haptics.impact(.heavy)
@@ -109,6 +119,26 @@ struct SettingsTrashView: View {
 
             Button("Cancel", role: .cancel) {}
         }
+    }
+
+    private var restoreTitle: String {
+        let count = trash.items.count
+
+        guard count > 0 else {
+            return String(localized: "Restore everything here?")
+        }
+
+        return String(localized: "Restore \(count) transactions?")
+    }
+
+    private var emptyTitle: String {
+        let count = trash.items.count
+
+        guard count > 0 else {
+            return String(localized: "Delete everything here forever?")
+        }
+
+        return String(localized: "Delete \(count) transactions forever?")
     }
 
     private func transactionRow(_ item: TrashedTransaction) -> some View {
@@ -125,16 +155,23 @@ struct SettingsTrashView: View {
                 Text(title)
                     .font(.system(.body, design: .rounded))
                     .foregroundColor(Color.PrimaryText)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                Text(subtitle(date: item.snapshot.date, daysLeft: days))
-                    .font(.system(.footnote, design: .rounded))
-                    .foregroundColor(Color.SubtitleText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                if let date = item.snapshot.date {
+                    Text(shortDate(date))
+                        .font(.system(.footnote, design: .rounded))
+                        .foregroundColor(Color.SubtitleText)
+                        .lineLimit(1)
+                }
+
+                Text(deletedInfo(item.deletedAt, daysLeft: days))
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundColor(Color.SubtitleText.opacity(0.8))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             AmountText(
                 item.snapshot.amount, role: .caption, sign: item.snapshot.income ? .plus : .minus, fit: .fullOnly,
@@ -206,19 +243,24 @@ struct SettingsTrashView: View {
         .padding(.vertical, 4)
     }
 
-    private func subtitle(date: Date?, daysLeft: Int) -> String {
-        let left = String(localized: "\(daysLeft) days left")
+    /// "12 Nov, 17:04", with the year only when it is not this year.
+    private func shortDate(_ date: Date) -> String {
+        let sameYear = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+        let day = Fmt.string(sameYear ? .dayMonth : .dayMonthYear, from: date)
+        return day + ", " + Fmt.time(date)
+    }
 
-        guard let date = date else {
-            return left
-        }
-
-        return Fmt.string(.dayMonthYear, from: date) + ", " + left
+    /// "deleted 18:55, 30 days left" (a date instead of the time when it was not today).
+    private func deletedInfo(_ deletedAt: Date, daysLeft: Int) -> String {
+        let when = Calendar.current.isDateInToday(deletedAt) ? Fmt.time(deletedAt) : Fmt.string(.dayMonth, from: deletedAt)
+        return String(localized: "trash-deleted-at \(when)") + ", " + String(localized: "\(daysLeft) days left")
     }
 
     private func restore(_ item: TrashedTransaction) {
         do {
-            try trash.restore(item)
+            try ChangeHistory.shared.withSource(ChangeHistory.Source.trash) {
+                try trash.restore(item)
+            }
             ToastCenter.shared.success(String(localized: "Restored"))
         } catch {
             // The "Couldn't save" toast is automatic; the copy stays here.
@@ -227,7 +269,9 @@ struct SettingsTrashView: View {
 
     private func restore(_ entry: TrashedCategory) {
         do {
-            try trash.restoreGroup(entry.groupID)
+            try ChangeHistory.shared.withSource(ChangeHistory.Source.trash) {
+                try trash.restoreGroup(entry.groupID)
+            }
             ToastCenter.shared.success(String(localized: "Restored"))
         } catch {
             // Automatic toast.
@@ -237,11 +281,16 @@ struct SettingsTrashView: View {
     private func restoreAll() {
         do {
             let groups = trash.categories.map { $0.groupID }
-            let restored = try trash.restoreAll()
 
-            // Categories that had no rows left in the trash come back through their group.
-            for groupID in groups {
-                try trash.restoreGroup(groupID)
+            let restored = try ChangeHistory.shared.withSource(ChangeHistory.Source.trash) { () throws -> [UUID] in
+                let ids = try trash.restoreAll()
+
+                // Categories that had no rows left in the trash come back through their group.
+                for groupID in groups {
+                    try trash.restoreGroup(groupID)
+                }
+
+                return ids
             }
 
             ToastCenter.shared.success(String(localized: "Restored transactions: \(restored.count)"))

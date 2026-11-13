@@ -178,5 +178,49 @@
 			<string>%lld года назад</string>
 		</dict>
 	</dict>
+	<key>Restore %lld transactions?</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@VARIABLE@</string>
+		<key>VARIABLE</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>Вернуть %lld записей?</string>
+			<key>one</key>
+			<string>Вернуть %lld запись?</string>
+			<key>few</key>
+			<string>Вернуть %lld записи?</string>
+			<key>many</key>
+			<string>Вернуть %lld записей?</string>
+			<key>other</key>
+			<string>Вернуть %lld записи?</string>
+		</dict>
+	</dict>
+	<key>Delete %lld transactions forever?</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@VARIABLE@</string>
+		<key>VARIABLE</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>Удалить %lld записей навсегда?</string>
+			<key>one</key>
+			<string>Удалить %lld запись навсегда?</string>
+			<key>few</key>
+			<string>Удалить %lld записи навсегда?</string>
+			<key>many</key>
+			<string>Удалить %lld записей навсегда?</string>
+			<key>other</key>
+			<string>Удалить %lld записи навсегда?</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

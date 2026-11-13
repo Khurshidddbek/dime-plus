@@ -303,6 +303,7 @@ enum HistoryText {
         case ChangeHistory.Source.shortcut: return String(localized: "history-source-shortcut")
         case ChangeHistory.Source.recurring: return String(localized: "history-source-recurring")
         case ChangeHistory.Source.trash: return String(localized: "history-source-trash")
+        case ChangeHistory.Source.history: return String(localized: "history-source-history")
         case ChangeHistory.Source.sms: return String(localized: "history-source-sms")
         case ChangeHistory.Source.smsAuto: return String(localized: "history-source-sms-auto")
         case ChangeHistory.Source.importing: return String(localized: "history-source-import")
@@ -676,11 +677,15 @@ private struct HistoryDetailView: View {
 
     private func delete(_ transaction: Transaction) {
         do {
-            let trashed = try TrashStore.shared.delete(transaction)
+            let trashed = try ChangeHistory.shared.withSource(ChangeHistory.Source.history) {
+                try TrashStore.shared.delete(transaction)
+            }
             existing = nil
 
             ToastCenter.shared.undo(String(localized: "Log Deleted")) {
-                _ = try? TrashStore.shared.restore(ids: [trashed.id])
+                _ = try? ChangeHistory.shared.withSource(ChangeHistory.Source.history) {
+                    try TrashStore.shared.restore(ids: [trashed.id])
+                }
             }
         } catch {
             // The "Couldn't save" toast is automatic.
@@ -689,7 +694,9 @@ private struct HistoryDetailView: View {
 
     private func restore(_ id: UUID) {
         do {
-            try TrashStore.shared.restore(ids: [id])
+            try ChangeHistory.shared.withSource(ChangeHistory.Source.history) {
+                try TrashStore.shared.restore(ids: [id])
+            }
             ToastCenter.shared.success(String(localized: "Restored"))
             refresh()
         } catch {

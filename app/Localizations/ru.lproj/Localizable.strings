@@ -961,3 +961,6 @@
 "How spending grew" = "как росли расходы";
 "Tap again to open" = "Нажмите еще раз, чтобы открыть";
 "Open category" = "Открыть категорию";
+"Restore everything here?" = "Вернуть все отсюда?";
+"trash-deleted-at %@" = "удалено %@";
+"history-source-history" = "из истории";
