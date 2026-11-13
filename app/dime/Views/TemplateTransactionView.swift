@@ -68,12 +68,28 @@ struct TemplateTransactionView: View {
         return (amount as NSString).doubleValue
     }
 
+    // What was typed so far, with grouping.
+    private var displayAmount: String {
+        if numberEntryType == 1 {
+            return MoneyFormat.number(transactionValue, fractionDigits: 2)
+        }
+
+        let pieces = amount.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+        let integer = MoneyFormat.number(Double(String(pieces.first ?? "0")) ?? 0)
+
+        if pieces.count > 1 {
+            return integer + MoneyFormat.decimalSeparator + String(pieces[1])
+        }
+
+        return integer
+    }
+
     @State var showCategoryPicker = false
     @State var showCategorySheet = false
 
     @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
     var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
+        return MoneyFormat.symbol(for: currency)
     }
 
     @State var showingCategoryView = false
@@ -110,14 +126,8 @@ struct TemplateTransactionView: View {
     }
 
     var downsize: (big: CGFloat, small: CGFloat) {
-        let amountText: String
+        let amountText = displayAmount
         let size = UIScreen.main.bounds.width - 105
-
-        if numberEntryType == 2 {
-            amountText = amount
-        } else {
-            amountText = String(format: "%.2f", transactionValue)
-        }
 
         if (amountText.widthOfRoundedString(size: 32, weight: .regular) + currencySymbol.widthOfRoundedString(size: 20, weight: .light) + 4) > size {
             return (24, 16)
@@ -323,7 +333,7 @@ struct TemplateTransactionView: View {
                                 .font(.system(size: downsize.small, weight: .light, design: .rounded))
                                 .foregroundColor(Color.SubtitleText)
                                 .baselineOffset(getDollarOffset(big: downsize.big, small: downsize.small))
-                            Text("\(transactionValue, specifier: "%.2f")")
+                            Text(displayAmount)
                                 .font(.system(size: downsize.big, weight: .regular, design: .rounded))
                                 .foregroundColor(Color.PrimaryText)
                         }
@@ -345,7 +355,7 @@ struct TemplateTransactionView: View {
                                     .font(.system(size: downsize.small, weight: .light, design: .rounded))
                                     .foregroundColor(Color.SubtitleText)
                                     .baselineOffset(getDollarOffset(big: downsize.big, small: downsize.small))
-                                Text(amount)
+                                Text(displayAmount)
                                     .font(.system(size: downsize.big, weight: .regular, design: .rounded))
                                     .foregroundColor(Color.PrimaryText)
                             }
@@ -620,8 +630,8 @@ struct TemplateTransactionView: View {
                 if number == 0 && numbers1.isEmpty {
                     return
                 } else {
-                    if numbers1.contains(".") {
-                        if numbers1.count - numbers1.firstIndex(of: ".")! < 3 {
+                    if let dotIndex = numbers1.firstIndex(of: ".") {
+                        if numbers1.count - dotIndex < 3 {
                             numbers1.append(String(number))
                         } else {
                             return
@@ -672,7 +682,7 @@ struct TemplateTransactionView: View {
 
         if let editedTransaction = toEdit {
             if note.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
-                editedTransaction.note = category!.wrappedName
+                editedTransaction.note = category?.wrappedName ?? ""
             } else {
                 editedTransaction.note = note.trimmingCharacters(in: .whitespaces)
             }
@@ -953,7 +963,7 @@ struct SettingsQuickAddWidgetDraggingView: View {
     @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
 
     var currencySymbol: String {
-        return Locale.current.localizedCurrencySymbol(forCurrencyCode: currency)!
+        return MoneyFormat.symbol(for: currency)
     }
 
     @StateObject var gridData = GridViewModel()
@@ -1058,25 +1068,6 @@ struct SingleTemplateButton: View {
         return bigFont.capHeight - smallFont.capHeight
     }
 
-    var downsize: (big: CGFloat, small: CGFloat, amountText: String) {
-        let amountText: String
-        let size: CGFloat = 80
-
-        if showCents && transaction.amount < 100 {
-            amountText = String(format: "%.2f", transaction.amount)
-        } else {
-            amountText = String(format: "%.0f", transaction.amount)
-        }
-
-        if amountText.widthOfRoundedString(size: 16, weight: .semibold) + currencySymbol.widthOfRoundedString(size: 13, weight: .medium) + 2 > size {
-            return (12, 9, amountText)
-        } else if amountText.widthOfRoundedString(size: 21, weight: .semibold) + currencySymbol.widthOfRoundedString(size: 18, weight: .medium) + 2 > size {
-            return (16, 13, amountText)
-        } else {
-            return (21, 18, amountText)
-        }
-    }
-
     var transactionColor: Color {
         if transaction.category?.income ?? false {
             return Color.IncomeGreen
@@ -1099,16 +1090,10 @@ struct SingleTemplateButton: View {
                 .foregroundStyle(Color.PrimaryText)
                 .lineLimit(1)
 
-            HStack(alignment: .lastTextBaseline, spacing: 1.3) {
-                Text(currencySymbol)
-                    .font(.system(size: downsize.small, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.PrimaryText)
-                    .baselineOffset(getDollarOffset(big: downsize.big, small: downsize.small))
-
-                Text(downsize.amountText)
-                    .font(.system(size: downsize.big, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.PrimaryText)
-            }
+            AmountText(
+                transaction.amount, size: 21, relativeTo: .title3, weight: .semibold, style: .hero, secondaryRatio: 0.85,
+                color: Color.PrimaryText, secondaryColor: Color.PrimaryText, minimumScale: 0.6
+            )
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)

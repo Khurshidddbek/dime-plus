@@ -67,7 +67,10 @@ struct GetInsightsIntent: AppIntent {
 
         let result = dataController.getShortcutInsights(type: typeInt, timeframe: timeframe.rawValue, optionalIncome: optionalIncome, categories: categories)
 
-        return .result(value: result, dialog: "Here you go!") {
+        // Spoken and shown where the snippet is not (Siri voice, CarPlay).
+        let dialog = IntentDialog(stringLiteral: MoneyFormat.string(result))
+
+        return .result(value: result, dialog: dialog) {
             ShortcutInsightsView(amount: result, type: type, timeframe: timeframe)
         }
     }
@@ -139,48 +142,30 @@ struct ShortcutInsightsView: View {
     let type: ShortcutsInsightsType
     let timeframe: ShortcutsInsightsTimeFrame
 
-    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
-
-    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-
     var leftText: String {
         switch type {
         case .net:
-            return "Net total"
+            return String(localized: "Net total")
         case .income:
-            return "Earned"
+            return String(localized: "Earned")
         case .spent:
-            return "Spent"
+            return String(localized: "Spent")
         }
     }
 
     var rightText: String {
         switch timeframe {
         case .day:
-            return "today"
+            return String(localized: "today")
         case .week:
-            return "this week"
+            return String(localized: "this week")
         case .month:
-            return "this month"
+            return String(localized: "this month")
         case .year:
-            return "this year"
+            return String(localized: "this year")
         case .all:
-            return "all time"
+            return String(localized: "all time")
         }
-    }
-
-    var amountString: String {
-        let numberFormatter = NumberFormatter()
-        numberFormatter.numberStyle = .currency
-        numberFormatter.currencyCode = currency
-
-        if showCents {
-            numberFormatter.maximumFractionDigits = 2
-        } else {
-            numberFormatter.maximumFractionDigits = 0
-        }
-
-        return numberFormatter.string(from: NSNumber(value: amount)) ?? "$0"
     }
 
     var body: some View {
@@ -189,10 +174,10 @@ struct ShortcutInsightsView: View {
                 .font(.system(size: 17, weight: .medium, design: .rounded))
                 .foregroundColor(Color.SubtitleText)
 
-            Text(amountString)
-                .font(.system(size: 32, weight: .medium, design: .rounded))
-                .lineLimit(1)
+            // A negative net keeps its minus.
+            AmountText(amount, role: .title)
         }
+        .frame(maxWidth: .infinity)
         .padding(20)
     }
 }

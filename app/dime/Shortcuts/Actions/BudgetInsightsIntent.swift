@@ -52,7 +52,11 @@ struct BudgetIntent: AppIntent {
             }
         }
 
-        return .result(value: amount, dialog: "Here you go!") {
+        // Spoken and shown where the snippet is not (Siri voice, CarPlay).
+        let caption = amount >= 0 ? String(localized: "left") : String(localized: "over")
+        let dialog = IntentDialog(stringLiteral: MoneyFormat.string(amount, sign: .never) + " " + caption)
+
+        return .result(value: amount, dialog: dialog) {
             ShortcutBudgetView(amount: amount, type: Int(budgetType))
         }
     }
@@ -92,10 +96,6 @@ struct ShortcutBudgetView: View {
     let amount: Double
     let type: Int
 
-    @AppStorage("showCents", store: UserDefaults.appGroup) var showCents: Bool = true
-
-    @AppStorage("currency", store: UserDefaults.appGroup) var currency: String = MoneyFormat.defaultCurrencyCode
-
     var budgetType: String {
         switch type {
         case 1:
@@ -111,27 +111,12 @@ struct ShortcutBudgetView: View {
         }
     }
 
-    var amountString: String {
-        let numberFormatter = NumberFormatter()
-        numberFormatter.numberStyle = .currency
-        numberFormatter.currencyCode = currency
-
-        if showCents {
-            numberFormatter.maximumFractionDigits = 2
-        } else {
-            numberFormatter.maximumFractionDigits = 0
-        }
-
-        return numberFormatter.string(from: NSNumber(value: abs(amount))) ?? "$0"
-    }
-
     var body: some View {
         VStack(spacing: 2) {
-            Text(amountString)
-                .font(.system(size: 32, weight: .medium, design: .rounded))
-                .lineLimit(1)
+            // The caption below says "left" or "over", so the number has no sign.
+            AmountText(amount, role: .title, sign: .never)
 
-            if amount > 0 {
+            if amount >= 0 {
                 Text("left \(budgetType)")
                     .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundColor(Color.SubtitleText)
@@ -141,6 +126,7 @@ struct ShortcutBudgetView: View {
                     .foregroundColor(Color.SubtitleText)
             }
         }
+        .frame(maxWidth: .infinity)
         .padding(20)
     }
 }

@@ -69,18 +69,14 @@ struct SingleTransactionPhotoView: View {
     let swapTimeLabel: Bool
     let future: Bool
 
+    // Signed, grouped, same symbol rules as the Log rows.
     var transactionAmountString: String {
-        let numberFormatter = NumberFormatter()
-        numberFormatter.numberStyle = .currency
-        numberFormatter.currencyCode = currency
+        let settings = MoneySettings.resolve(
+            currency: currency, showCents: showCents,
+            symbolOverride: UserDefaults.appGroup.string(forKey: MoneyFormat.symbolOverrideKey) ?? ""
+        )
 
-        if showCents {
-            numberFormatter.maximumFractionDigits = 2
-        } else {
-            numberFormatter.maximumFractionDigits = 0
-        }
-
-        return numberFormatter.string(from: NSNumber(value: transaction.amount)) ?? "$0"
+        return MoneyFormat.string(transaction.amount, sign: transaction.income ? .plus : .minus, settings: settings)
     }
 
     var body: some View {
@@ -136,14 +132,14 @@ struct SingleTransactionPhotoView: View {
             Spacer()
 
             if transaction.income {
-                Text("+\(transactionAmountString)")
+                Text(transactionAmountString)
                     .font(.system(size: 45, weight: .medium, design: .rounded))
                     .foregroundColor(future ? Color.SubtitleText : Color.IncomeGreen)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
                     .layoutPriority(1)
             } else {
-                Text("-\(transactionAmountString)")
+                Text(transactionAmountString)
                     .font(.system(size: 45, weight: .medium, design: .rounded))
                     .foregroundColor(future ? Color.SubtitleText : Color.PrimaryText)
                     .minimumScaleFactor(0.7)
