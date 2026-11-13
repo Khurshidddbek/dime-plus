@@ -111,6 +111,7 @@ struct SMSInboxView: View {
         .onAppear {
             inbox.reloadIfNeeded()
             ingestor.refreshPending()
+            ingestor.recheckDuplicates()
             clipboard.check()
         }
     }
@@ -190,9 +191,11 @@ struct SMSInboxView: View {
                 if !suggestions.isEmpty {
                     groupHeader("Suggestions", count: suggestions.count) {
                         if matched.count > 1 {
-                            groupButton(String(localized: "Confirm all matched (\(matched.count))")) {
+                            // Short label: the long one got cut in the header. The hint says only matched ones are added.
+                            groupButton(String(localized: "Add all (\(matched.count))")) {
                                 confirmAll(matched, byID)
                             }
+                            .accessibilityHint(Text("Adds the suggestions that already have a category."))
                         }
                     }
 
@@ -262,7 +265,7 @@ struct SMSInboxView: View {
                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
                 .foregroundColor(Color.PrimaryText)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, 12)
                 .frame(minHeight: 36)
                 .background(Color.SecondaryBackground, in: RoundedRectangle(cornerRadius: 11.5, style: .continuous))

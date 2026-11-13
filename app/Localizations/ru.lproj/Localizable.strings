@@ -904,3 +904,5 @@
 "HUMOCARD sends the Humo messages, CARDINFO the Uzcard ones. Tap a name to copy it." = "HUMOCARD присылает SMS по Humo, CARDINFO по Uzcard. Нажмите на имя, чтобы скопировать.";
 "No Sender is on an older iOS? Use Message Contains with one of these words instead, one automation per word: %@." = "На старой iOS нет пункта Отправитель? Выберите Сообщение содержит и одно из этих слов, по одной автоматизации на слово: %@.";
 "Type the sender exactly as shown, in capital letters." = "Вводите отправителя точно как здесь, заглавными буквами.";
+"Add all (%lld)" = "Добавить все (%lld)";
+"Adds the suggestions that already have a category." = "Добавляет только предложения с категорией.";

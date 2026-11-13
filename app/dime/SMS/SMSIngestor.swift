@@ -859,10 +859,26 @@ final class SMSIngestor {
         let id: UUID
         let strong: Bool
         let seconds: TimeInterval
+        /// The note names the merchant: "Alif Nasiya" for ALIFNASIYA.UZ.
+        let named: Bool
+
+        func isBetter(than other: DuplicateMatch) -> Bool {
+            if strong != other.strong {
+                return strong
+            }
+
+            if named != other.named {
+                return named
+            }
+
+            return seconds < other.seconds
+        }
     }
 
-    /// Strong: the amount differs by less than 1 (42000 typed for 42000.00, 278566 for 835696.80)
-    /// on the same day or within 12 hours. Weak: within 1 % on the same day (typed a rounded number).
+    /// Strong: the amount differs by less than 1 (42000 typed for 42000.00, 1046448 for 1046448.72)
+    /// on the same day or within 12 hours, so a payment logged by hand some minutes later still counts.
+    /// Weak: within 1 % (typed a rounded number) on the same day or within 30 minutes across midnight.
+    /// Among several, a note that names the merchant wins, then the closest time.
     private static func duplicate(of parsed: ParsedSMS, in existing: [SMSTransactionInfo], excluding: Set<UUID>) -> DuplicateMatch? {
         guard let amount = parsed.amountValue else {
             return nil
@@ -870,6 +886,7 @@ final class SMSIngestor {
 
         let value = abs(amount)
         let calendar = Calendar.current
+        let merchant = SMSHistoryIndex.compact(parsed.merchantKey)
         var best: DuplicateMatch?
 
         for transaction in existing {
@@ -877,35 +894,96 @@ final class SMSIngestor {
                 continue
             }
 
-            let difference = abs(transaction.amount - value)
+            let difference = abs(abs(transaction.amount) - value)
             let seconds = abs(transaction.date.timeIntervalSince(parsed.date))
             let sameDay = calendar.isDate(transaction.date, inSameDayAs: parsed.date)
+            let named = notesMerchant(transaction.note, merchant: merchant)
             var found: DuplicateMatch?
 
             if difference < 1.0, sameDay || seconds <= 12 * 3600 {
-                found = DuplicateMatch(id: transaction.id, strong: true, seconds: seconds)
-            } else if value > 0, difference <= value * 0.01, sameDay {
-                found = DuplicateMatch(id: transaction.id, strong: false, seconds: seconds)
+                found = DuplicateMatch(id: transaction.id, strong: true, seconds: seconds, named: named)
+            } else if value > 0, difference <= value * 0.01, sameDay || seconds <= 30 * 60 {
+                found = DuplicateMatch(id: transaction.id, strong: false, seconds: seconds, named: named)
             }
 
             guard let match = found else {
                 continue
             }
 
-            if let current = best {
-                if match.strong != current.strong {
-                    if match.strong {
-                        best = match
-                    }
-                } else if match.seconds < current.seconds {
-                    best = match
-                }
-            } else {
-                best = match
+            if let current = best, !match.isBetter(than: current) {
+                continue
             }
+
+            best = match
         }
 
         return best
+    }
+
+    /// "Alif Nasiya" and "alifnasiya", or a longer note that holds the merchant word.
+    private static func notesMerchant(_ note: String, merchant: String) -> Bool {
+        let key = SMSHistoryIndex.compact(note)
+
+        guard key.count >= 4, merchant.count >= 4 else {
+            return false
+        }
+
+        return key == merchant || key.contains(merchant) || merchant.contains(key)
+    }
+
+    /// A message that came before the owner typed the same payment by hand (paid, logged it some
+    /// minutes later) had nothing to match when it arrived. Checked again each time the inbox opens.
+    /// Only flags it, the owner decides.
+    func recheckDuplicates() {
+        guard inbox.isUsable else {
+            return
+        }
+
+        let appCurrency = Self.appCurrency
+        let open = inbox.pending.filter { suggestion in
+            let parsed = suggestion.parsed
+            let foreign = parsed.currency != nil && parsed.currency != appCurrency
+
+            return !suggestion.has(.possibleDuplicate) && !foreign && parsed.amountMinor != nil && parsed.direction != nil
+        }
+
+        guard !open.isEmpty else {
+            return
+        }
+
+        let existing = existingTransactions(around: open.map { $0.parsed })
+
+        guard !existing.isEmpty else {
+            return
+        }
+
+        var taken = inbox.createdTransactionIDs
+
+        for suggestion in inbox.pending {
+            if let id = suggestion.duplicateOfTransactionID {
+                taken.insert(id)
+            }
+        }
+
+        var flagged = 0
+
+        for stored in open {
+            guard let match = Self.duplicate(of: stored.parsed, in: existing, excluding: taken) else {
+                continue
+            }
+
+            taken.insert(match.id)
+
+            var suggestion = stored
+            suggestion.flags.append(.possibleDuplicate)
+            suggestion.duplicateOfTransactionID = match.id
+            inbox.update(suggestion)
+            flagged += 1
+        }
+
+        if flagged > 0 {
+            DiagnosticsLog.shared.log("sms", "recheck: possible duplicates \(flagged)")
+        }
     }
 
     private enum LegOrigin {
@@ -1018,11 +1096,80 @@ final class SMSIngestor {
     }
 
     private static let pendingRefreshKey = "smsPendingRefreshV1"
+    private static let pendingHistoryRefreshKey = "smsPendingRefreshV2"
+
+    /// One-time passes over messages stored by an older build.
+    func refreshPending() {
+        rereadPendingOnce()
+        guessPendingCategoriesOnce()
+    }
+
+    /// Suggestions stored before the history guess existed stayed without a category, while new
+    /// ones for the same merchant got one (YandexGO Taxi, Alifnasiya). Gives them the same guess
+    /// as a new message. Once, and only where the owner neither picked a category nor changed
+    /// the direction.
+    private func guessPendingCategoriesOnce() {
+        let defaults = UserDefaults.appGroup
+
+        if defaults.bool(forKey: Self.pendingHistoryRefreshKey) {
+            return
+        }
+
+        inbox.reloadIfNeeded()
+
+        guard inbox.isUsable else {
+            return
+        }
+
+        defaults.set(true, forKey: Self.pendingHistoryRefreshKey)
+
+        let waiting = inbox.pending.filter { suggestion in
+            let parsed = suggestion.parsed
+
+            return suggestion.suggestedCategoryID == nil && suggestion.categorySource == nil && suggestion.pair == nil
+                && !suggestion.isOwnTransfer && parsed.amountMinor != nil && parsed.direction != nil
+                && !parsed.merchantKey.isEmpty && Self.mayGuessFromHistory(parsed)
+        }
+
+        guard !waiting.isEmpty else {
+            return
+        }
+
+        let categoryList = SMSDataLookup.categories()
+        var categories = [UUID: SMSCategoryInfo]()
+
+        for category in categoryList {
+            categories[category.id] = category
+        }
+
+        let historyIndex = SMSDataLookup.historyIndex()
+        var guessed = 0
+
+        for stored in waiting {
+            // A direction set by hand differs from a fresh reading: the owner touched it, leave it.
+            let fresh = SMSParser.parse(stored.rawText, receivedAt: stored.receivedAt)
+
+            guard fresh.direction == stored.parsed.direction,
+                  let found = historyIndex.category(for: stored.parsed, categories: categoryList),
+                  let category = categories[found], category.income == stored.parsed.isIncome
+            else {
+                continue
+            }
+
+            var suggestion = stored
+            suggestion.suggestedCategoryID = found
+            suggestion.categorySource = "history"
+            inbox.update(suggestion)
+            guessed += 1
+        }
+
+        DiagnosticsLog.shared.log("sms", "refresh v2: history categories \(guessed) of \(waiting.count)")
+    }
 
     /// Messages stored by an older build are read again with the current parser: declined ones and
     /// notices leave the inbox, transfers lose a category guessed from history, and transfer halves
     /// that both wait are paired. Runs once, so a pair the owner split by hand stays split.
-    func refreshPending() {
+    private func rereadPendingOnce() {
         let defaults = UserDefaults.appGroup
 
         if defaults.bool(forKey: Self.pendingRefreshKey) {
