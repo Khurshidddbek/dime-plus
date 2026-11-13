@@ -247,6 +247,8 @@ final class LogFeed: NSObject, ObservableObject, NSFetchedResultsControllerDeleg
 
         var newCurrent = [LogRowModel]()
         var newUpcoming = [LogRowModel]()
+        // The UPCOMING block is one ForEach: ids must be unique there (a double import leaves twins).
+        var upcomingIDs = Set<UUID>()
         newCurrent.reserveCapacity(all.count)
 
         for row in all {
@@ -255,7 +257,9 @@ final class LogFeed: NSObject, ObservableObject, NSFetchedResultsControllerDeleg
             }
 
             if !row.isCurrent || row.recurringType > 0 {
-                newUpcoming.append(row)
+                if upcomingIDs.insert(row.id).inserted {
+                    newUpcoming.append(row)
+                }
             }
         }
 

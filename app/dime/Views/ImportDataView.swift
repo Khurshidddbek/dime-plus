@@ -508,6 +508,11 @@ struct ImportDataView: View {
                                             .contentShape(Rectangle())
                                             .onTapGesture {
                                                 uniqueCategories[categoryIndex].income.toggle()
+
+                                                // The list below now shows the other type; a link of the old type would be imported silently.
+                                                if let linked = uniqueCategories[categoryIndex].category, linked.income != uniqueCategories[categoryIndex].income {
+                                                    uniqueCategories[categoryIndex].category = nil
+                                                }
                                             }
                                             .padding(12)
                                         }

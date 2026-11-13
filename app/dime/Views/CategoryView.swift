@@ -493,7 +493,7 @@ struct CategoryListView: View {
                     .environment(\.editMode, .constant(self.isEditing ? EditMode.active : EditMode.inactive))
                 } else {
                     List {
-                        Section(header: Text("\(income ? "INCOME" : "EXPENSE") CATEGORIES").foregroundColor(Color.SubtitleText)) {
+                        Section(header: Text(income ? LocalizedStringKey("INCOME CATEGORIES") : LocalizedStringKey("EXPENSE CATEGORIES")).foregroundColor(Color.SubtitleText)) {
                             if categories.isEmpty {
                                 VStack(spacing: 10) {
                                     Image(systemName: "tray")
@@ -502,7 +502,7 @@ struct CategoryListView: View {
 //                                        .font(.system(size: 37, weight: .light))
                                         .foregroundColor(Color.SubtitleText)
 
-                                    Text("No \(income ? "income" : "expense") categories found,\nclick the 'New' button to add some.")
+                                    Text(income ? LocalizedStringKey("No income categories yet. Tap New to add one.") : LocalizedStringKey("No expense categories yet. Tap New to add one."))
                                         .font(.system(.body, design: .rounded).weight(.medium))
                                         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 //                                        .font(.system(size: 17, weight: .medium, design: .rounded))
@@ -590,6 +590,17 @@ struct CategoryListView: View {
                 }, onConfirm: {
                     deleteMode = false
                 })
+            } else {
+                // Never leave an empty cover that cannot be closed.
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        deleteMode = false
+                    }
+                    .background(BackgroundBlurView())
+                    .onAppear {
+                        deleteMode = false
+                    }
             }
         }
         .sheet(item: $toEdit, onDismiss: {
@@ -1494,15 +1505,20 @@ struct SuggestedCategoriesView: View {
     var suggestions: [SuggestedCategory] {
         var holding = [SuggestedCategory]()
 
+        // Categories are saved under the localised name, so that is the one to compare
+        // (otherwise a tap on a suggestion that already exists does nothing).
+        let names = nameArray
+        let emojis = emojiArray
+
         if income {
             SuggestedCategory.incomes.forEach { category in
-                if !nameArray.contains(category.name) && !emojiArray.contains(category.emoji) {
+                if !names.contains(category.name) && !names.contains(NSLocalizedString(category.name, comment: "category name")) && !emojis.contains(category.emoji) {
                     holding.append(category)
                 }
             }
         } else {
             SuggestedCategory.expenses.forEach { category in
-                if !nameArray.contains(category.name) && !emojiArray.contains(category.emoji) {
+                if !names.contains(category.name) && !names.contains(NSLocalizedString(category.name, comment: "category name")) && !emojis.contains(category.emoji) {
                     holding.append(category)
                 }
             }

@@ -145,10 +145,11 @@ enum InsightsBuilder {
         page.flow = flow
         page.frame = snapshot.period.frame
         page.categories = snapshot.categories
-        page.periodIsEmpty = snapshot.rows.isEmpty
         page.hasSelection = bucket != nil || category != nil
 
         let flowRows = rows(snapshot.rows, flow: flow)
+        // Per flow: a month with only a salary has nothing to show under Expenses.
+        page.periodIsEmpty = flowRows.isEmpty
         var bucketRows = flowRows
         if let bucket {
             bucketRows = flowRows.filter { $0.bucket == bucket }
@@ -447,7 +448,8 @@ enum InsightsBuilder {
         if data.canCap, !linear, highest > data.top {
             data.cappedAt = data.top
         }
-        data.ticks = [data.top, data.top / 2, 0]
+        // Nothing to scale: only the baseline, not a made-up "1" at the top.
+        data.ticks = highest > 0 ? [data.top, data.top / 2, 0] : [0]
         return data
     }
 

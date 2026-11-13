@@ -72,13 +72,15 @@ final class InsightsModel: ObservableObject {
     // Called from onAppear of the tab, every time it becomes visible.
     func start(context: NSManagedObjectContext, incomeTracking: Bool) {
         isVisible = true
-        self.incomeTracking = incomeTracking
 
         if self.context == nil {
+            self.incomeTracking = incomeTracking
             self.context = context
             installObservers(for: context)
             reload()
         } else {
+            // The setting may have changed while the tab was hidden: the page must be rebuilt for it.
+            setIncomeTracking(incomeTracking)
             refreshIfNeeded()
         }
     }

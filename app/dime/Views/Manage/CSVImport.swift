@@ -368,7 +368,9 @@ enum CSVImport {
     static func signature(date: Date, amount: Double, income: Bool, categoryID: UUID?, note: String) -> String {
         // Whole seconds, rounded down: that is what the text form of a date in an export keeps.
         let seconds = Int(date.timeIntervalSince1970.rounded(.down))
-        let cents = Int((amount * 100).rounded())
+        // A broken amount in the store (NaN, infinity) must not trap in Int().
+        let scaled = (amount * 100).rounded()
+        let cents = scaled.isFinite && abs(scaled) < 9e17 ? Int(scaled) : 0
 
         return "\(seconds)|\(cents)|\(income ? 1 : 0)|\(categoryID?.uuidString ?? "")|\(note)"
     }

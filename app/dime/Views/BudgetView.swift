@@ -686,7 +686,7 @@ struct SingleBudgetView: View {
             if budget.type == 1 {
                 let components = calendar.dateComponents([.hour], from: budget.wrappedDate, to: Date.now)
 
-                return String(localized: "\(24 - (components.hour ?? 0)) hours left")
+                return String(localized: "\(max(0, 24 - (components.hour ?? 0))) hours left")
             } else if budget.type == 2 {
                 let components = calendar.dateComponents([.day], from: budget.wrappedDate, to: Date.now)
 
@@ -1466,7 +1466,7 @@ struct TimeBudgetView: View {
 
         if budgetType == 1 {
             let components = calendar.dateComponents([.hour], from: budget.wrappedDate, to: Date.now)
-            return String(localized: "\(24 - (components.hour ?? 0)) hours left")
+            return String(localized: "\(max(0, 24 - (components.hour ?? 0))) hours left")
         } else {
             return String(localized: "\(daysLeftNumber) days left")
         }
@@ -1779,7 +1779,7 @@ struct FilteredCategoryDayBudgetView: View {
             }
         }
         // The total used to stay stale after a row was added or deleted on this screen.
-        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextObjectsDidChange)) { notification in
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextObjectsDidChange, object: moc)) { notification in
             guard BudgetMath.touchesBudgetData(notification) else {
                 return
             }
@@ -1836,6 +1836,7 @@ struct FilteredCategoryDayBudgetView: View {
 struct FilteredBudgetView: View {
     @SectionedFetchRequest<Date?, Transaction> private var transactions: SectionedFetchResults<Date?, Transaction>
 
+    @Environment(\.managedObjectContext) var moc
     @Binding var totalSpent: Double
     var date: Date
 
@@ -1873,7 +1874,7 @@ struct FilteredBudgetView: View {
                 totalSpent = holding
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextObjectsDidChange)) { notification in
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextObjectsDidChange, object: moc)) { notification in
             guard BudgetMath.touchesBudgetData(notification) else {
                 return
             }
@@ -1984,7 +1985,7 @@ struct TimeMainBudgetView: View {
 
         if budgetType == 1 {
             let components = calendar.dateComponents([.hour], from: budget.wrappedDate, to: Date.now)
-            return String(localized: "\(24 - (components.hour ?? 0)) hours left")
+            return String(localized: "\(max(0, 24 - (components.hour ?? 0))) hours left")
         } else {
             return String(localized: "\(daysLeftNumber) days left")
         }

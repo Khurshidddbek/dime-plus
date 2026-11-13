@@ -200,7 +200,7 @@ struct ExpenditureWidgetEntryView: View {
             } else {
                 GeometryReader { proxy in
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(entry.transactions.prefix(3), id: \.self) { transaction in
+                        ForEach(Array(entry.transactions.prefix(3).enumerated()), id: \.offset) { _, transaction in
                             HStack(spacing: 3) {
                                 Text(transaction.note)
                                     .fontWeight(.semibold)
@@ -262,7 +262,7 @@ struct ExpenditureWidgetEntryView: View {
                                 .font(.system(size: 9, weight: .medium, design: .rounded))
                                 .foregroundColor(Color.SubtitleText)
 
-                            ForEach(entry.transactions.prefix(3), id: \.self) { transaction in
+                            ForEach(Array(entry.transactions.prefix(3).enumerated()), id: \.offset) { _, transaction in
                                 HStack(spacing: 5) {
                                     Capsule()
                                         .fill(Color(hex: transaction.colour))
@@ -355,7 +355,7 @@ struct ExpenditureWidgetEntryView: View {
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
                                 .foregroundColor(Color.SubtitleText)
 
-                            ForEach(entry.transactions, id: \.self) { transaction in
+                            ForEach(Array(entry.transactions.enumerated()), id: \.offset) { _, transaction in
                                 HStack(spacing: 8) {
                                     RoundedRectangle(cornerRadius: 5)
                                         .fill(Color(hex: transaction.colour))

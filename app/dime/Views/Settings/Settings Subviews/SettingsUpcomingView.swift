@@ -117,8 +117,10 @@ struct SettingsUpcomingView: View {
     }
     .modifier(SettingsSubviewModifier())
     .onAppear {
-      showFuture = UserDefaults.appGroup.bool(
-        forKey: "showUpcomingTransactions")
+      // An unset key means "shown" (the Log default). Reading it as false switched the
+      // section off just by opening this screen.
+      showFuture = UserDefaults.appGroup.object(
+        forKey: "showUpcomingTransactions") as? Bool ?? true
       showSoon = UserDefaults.appGroup.bool(
         forKey: "showUpcomingTransactionsWhenUpcoming")
     }
