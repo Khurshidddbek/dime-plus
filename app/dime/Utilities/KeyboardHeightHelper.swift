@@ -13,25 +13,29 @@ import UIKit
 class KeyboardHeightHelper: ObservableObject {
     @Published var keyboardHeight: CGFloat = 0
 
+    private var observer: NSObjectProtocol?
+
     private func listenForKeyboardNotifications() {
-        NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidShowNotification,
-                                               object: nil,
-                                               queue: .main) { notification in
+        // Weak self plus removal in deinit: views create this object on every init,
+        // a strong block observer would keep each one alive for the life of the app.
+        observer = NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidShowNotification,
+                                                          object: nil,
+                                                          queue: .main) { [weak self] notification in
             guard let userInfo = notification.userInfo,
                   let keyboardRect = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
 
-            self.keyboardHeight = keyboardRect.height
+            self?.keyboardHeight = keyboardRect.height
         }
-
-//        NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidHideNotification,
-//                                               object: nil,
-//                                               queue: .main) { (notification) in
-//                                                self.keyboardHeight = 0
-//        }
     }
 
     init() {
         listenForKeyboardNotifications()
+    }
+
+    deinit {
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 }
 
@@ -79,7 +83,6 @@ extension UIApplication {
 struct KeyboardAwareModifier: ViewModifier {
     @AppStorage("keyboard", store: UserDefaults.appGroup) var savedKeyboardHeight: Double = .init(UIScreen.main.bounds.height / 2.5)
     var showToolbar: Bool
-//    @State private var keyboardHeight: CGFloat = 250
 
     private var keyboardHeightPublisher: AnyPublisher<CGFloat, Never> {
         Publishers.Merge(
@@ -93,12 +96,24 @@ struct KeyboardAwareModifier: ViewModifier {
         ).eraseToAnyPublisher()
     }
 
+    // One odd keyboard (emoji, third party, a stale value from another device) must not deform the pad.
+    private var clampedHeight: CGFloat {
+        let screen = UIScreen.main.bounds.height
+        return min(max(CGFloat(savedKeyboardHeight), screen * 0.30), screen * 0.45)
+    }
+
     func body(content: Content) -> some View {
         content
-            .frame(height: savedKeyboardHeight)
+            .frame(height: clampedHeight)
             .onReceive(keyboardHeightPublisher) { value in
-                if value > 200 {
-                    self.savedKeyboardHeight = value - 20
+                let screen = UIScreen.main.bounds.height
+
+                if value > 200, value < screen * 0.5 {
+                    let wanted = Double(value - 20)
+
+                    if abs(wanted - savedKeyboardHeight) > 0.5 {
+                        savedKeyboardHeight = wanted
+                    }
                 }
             }
     }

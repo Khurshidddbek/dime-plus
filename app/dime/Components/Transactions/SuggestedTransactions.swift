@@ -7,69 +7,85 @@
 
 import SwiftUI
 
-struct SuggestedTransactions: View {
-    @Binding var note: String
-    @Binding var numbers: [Int]
-    @Binding var numbers1: [String]
-    @Binding var category: Category?
-    @Binding var income: Bool
-    var currencySymbol: String
-    var suggestedTransactions: [Transaction]
+// Chips with past notes, shown in place of the date and category row while the note field has focus.
+struct NoteSuggestionChips: View {
+    let suggestions: [NoteSuggestion]
+    let categoryFor: (NoteSuggestion) -> Category?
+    let onPick: (NoteSuggestion) -> Void
+
+    @AppStorage("currency", store: UserDefaults.appGroup) private var currency: String = MoneyFormat.defaultCurrencyCode
+    @AppStorage("showCents", store: UserDefaults.appGroup) private var showCents: Bool = true
+
+    init(
+        suggestions: [NoteSuggestion],
+        categoryFor: @escaping (NoteSuggestion) -> Category?,
+        onPick: @escaping (NoteSuggestion) -> Void
+    ) {
+        self.suggestions = suggestions
+        self.categoryFor = categoryFor
+        self.onPick = onPick
+    }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(suggestedTransactions, id: \.self) { transaction in
+                ForEach(suggestions) { suggestion in
                     Button {
-                        let string = String(format: "%.2f", transaction.wrappedAmount)
-                        var stringArray = string.compactMap { String($0) }
-                        note = transaction.wrappedNote
-
-                        withAnimation {
-                            numbers = stringArray.compactMap { Int($0) }
-                            if round(transaction.wrappedAmount) == transaction.wrappedAmount {
-                                stringArray.removeLast()
-                                stringArray.removeLast()
-                                stringArray.removeLast()
-                                numbers1 = stringArray
-                            } else {
-                                numbers1 = stringArray
-                            }
-                            if category == nil {
-                                category = transaction.category
-                            }
-                        }
-
-                        self.hideKeyboard()
+                        onPick(suggestion)
                     } label: {
-                        HStack(spacing: 3) {
-                            Text(transaction.wrappedNote)
-                                .font(.system(size: 17.5, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color.PrimaryText)
-                                .lineLimit(1)
-                                .padding(.vertical, 3.5)
-                                .padding(.horizontal, 7)
-
-                            Text("\(currencySymbol)\(Int(round(transaction.wrappedAmount)))")
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .lineLimit(1)
-                                .foregroundStyle(Color(hex: transaction.wrappedColour))
-                                .padding(.vertical, 3.5)
-                                .padding(.horizontal, 5)
-                                .background(
-                                    Color(hex: transaction.wrappedColour).opacity(0.23),
-                                    in: RoundedRectangle(cornerRadius: 6.5, style: .continuous)
-                                )
-                        }
-                        .padding(5)
-                        .background(
-                            Color.SecondaryBackground,
-                            in: RoundedRectangle(cornerRadius: 11.5, style: .continuous)
-                        )
+                        chip(suggestion, category: categoryFor(suggestion))
                     }
+                    .buttonStyle(NumPadButton())
                 }
             }
         }
         .padding(.bottom, 5)
+    }
+
+    private func chip(_ suggestion: NoteSuggestion, category: Category?) -> some View {
+        HStack(spacing: 3) {
+            if let category {
+                Text(category.wrappedEmoji)
+                    .font(.system(.footnote, design: .rounded))
+                    .padding(.vertical, 3.5)
+                    .padding(.horizontal, 5)
+                    .background(
+                        Color(hex: category.wrappedColour).opacity(0.23),
+                        in: RoundedRectangle(cornerRadius: 6.5, style: .continuous)
+                    )
+            }
+
+            Text(shortened(suggestion.note))
+                .foregroundStyle(Color.PrimaryText)
+                .lineLimit(1)
+                .padding(.vertical, 3.5)
+                .padding(.horizontal, 7)
+
+            if suggestion.amountIsStable {
+                Text(amountLabel(suggestion.lastAmount))
+                    .lineLimit(1)
+                    .foregroundStyle(Color.SubtitleText)
+                    .padding(.vertical, 3.5)
+                    .padding(.trailing, 5)
+            }
+        }
+        .font(.system(.body, design: .rounded).weight(.semibold))
+        .padding(5)
+        .frame(minHeight: 44)
+        .background(
+            Color.SecondaryBackground,
+            in: RoundedRectangle(cornerRadius: 11.5, style: .continuous)
+        )
+    }
+
+    // Notes can be 300 characters long now, a chip shows the start only.
+    private func shortened(_ note: String) -> String {
+        note.count > 28 ? String(note.prefix(27)) + "..." : note
+    }
+
+    // Number only, compact from 100 000 up: the chip stays short for large amounts.
+    private func amountLabel(_ value: Double) -> String {
+        let settings = MoneySettings.resolve(currency: currency, showCents: showCents)
+        return MoneyFormat.compactParts(value, settings: settings).withoutSymbol().text
     }
 }
