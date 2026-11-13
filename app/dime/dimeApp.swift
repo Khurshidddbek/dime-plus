@@ -24,6 +24,8 @@ struct dimeApp: App {
                 .environmentObject(dataController)
                 .environmentObject(unlockManager)
                 .environmentObject(tabBarManager)
+                .environmentObject(PersistenceStatus.shared)
+                .environmentObject(TrashStore.shared)
         }
     }
 
