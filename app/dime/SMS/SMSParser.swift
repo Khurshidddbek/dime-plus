@@ -16,7 +16,7 @@
 //  8. To'lov: ALIFNASIYA.UZ, UZ,11.03.25 03:31,karta ***8821. Miqdor:835696.80 UZS Qoldiq:10418851.68 UZS
 //     (the real one has the typographic apostrophe U+2018 in "To'lov")
 //  9. To'lov: UZCARD TO VISA, UZ,09.03.25 22:30,karta ***8821. Miqdor:300000.00 UZS Qoldiq:15649548.48 UZS
-// 10. Xarid: GULNOZA SAVDO MCHJ, chil, TOSHKENT SH 03.02.26 09:15 karta ***8821. Miqdor:52000.00 UZS, Qoldiq:1250000.00 UZS (made up, same layout)
+// 10. Xarid: GULNOZA SAVDO MCHJ, chil, TOSHKENT SH 03.02.25 09:15 karta ***8821. Miqdor:52000.00 UZS, Qoldiq:1250000.00 UZS (made up, same layout)
 //
 
 import Foundation
@@ -150,7 +150,7 @@ enum SMSParser {
     )
 
     // Newer Uzcard layout without the country and without commas around the date:
-    // "Xarid: GULNOZA SAVDO MCHJ, chil, TOSHKENT SH 03.02.26 09:15 karta ***8821. Miqdor:52000.00 UZS, Qoldiq:..."
+    // "Xarid: GULNOZA SAVDO MCHJ, chil, TOSHKENT SH 03.02.25 09:15 karta ***8821. Miqdor:52000.00 UZS, Qoldiq:..."
     // groups: 1 operation, 2 merchant with the place, 3 date, 4 card, 5 amount, 6 currency, 7 balance?, 8 balance currency?
     private static let uzcardShort = rx(
         #"^([^:]{3,60}?)\s*:\s*(.+?)\s*,?\s*(\d{2}\.\d{2}\.\d{2,4}\s+\d{1,2}:\d{2})\s*,?\s*(?:karta|card)\s*\*+\s*(\d{4})\s*\.?\s*(?:Miqdor|Summa)\s*:\s*("#
