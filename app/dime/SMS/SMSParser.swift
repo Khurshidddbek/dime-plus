@@ -16,6 +16,7 @@
 //  8. To'lov: ALIFNASIYA.UZ, UZ,11.03.25 03:31,karta ***8821. Miqdor:835696.80 UZS Qoldiq:10418851.68 UZS
 //     (the real one has the typographic apostrophe U+2018 in "To'lov")
 //  9. To'lov: UZCARD TO VISA, UZ,09.03.25 22:30,karta ***8821. Miqdor:300000.00 UZS Qoldiq:15649548.48 UZS
+// 10. Xarid: GULNOZA SAVDO MCHJ, chil, TOSHKENT SH 03.02.26 09:15 karta ***8821. Miqdor:52000.00 UZS, Qoldiq:1250000.00 UZS (made up, same layout)
 //
 
 import Foundation
@@ -148,6 +149,14 @@ enum SMSParser {
             + amt + #")\s*([A-Za-z]{3})\s*(?:(?:Qoldiq|Balans)\s*:\s*(-?(?:"# + amt + #"))\s*([A-Za-z]{3}))?"#
     )
 
+    // Newer Uzcard layout without the country and without commas around the date:
+    // "Xarid: GULNOZA SAVDO MCHJ, chil, TOSHKENT SH 03.02.26 09:15 karta ***8821. Miqdor:52000.00 UZS, Qoldiq:..."
+    // groups: 1 operation, 2 merchant with the place, 3 date, 4 card, 5 amount, 6 currency, 7 balance?, 8 balance currency?
+    private static let uzcardShort = rx(
+        #"^([^:]{3,60}?)\s*:\s*(.+?)\s*,?\s*(\d{2}\.\d{2}\.\d{2,4}\s+\d{1,2}:\d{2})\s*,?\s*(?:karta|card)\s*\*+\s*(\d{4})\s*\.?\s*(?:Miqdor|Summa)\s*:\s*("#
+            + amt + #")\s*([A-Za-z]{3})\s*,?\s*(?:(?:Qoldiq|Balans)\s*:\s*(-?(?:"# + amt + #"))\s*([A-Za-z]{3}))?"#
+    )
+
     private static let genericBalance = rx(
         #"(?:dostupno|qoldiq|balans|balance|ostatok|mavjud|available|остаток|доступно|баланс|қолдиқ)\s*:?\s*(-?(?:"#
             + amt + #"))\s*([A-Za-z']{3,4})?"#
@@ -200,7 +209,8 @@ enum SMSParser {
         var halfRead: ParsedSMS?
 
         for candidate in templateCandidates(text) {
-            guard let parsed = parseHumo(candidate, receivedAt: receivedAt) ?? parseUzcard(candidate, receivedAt: receivedAt) else {
+            guard let parsed = parseHumo(candidate, receivedAt: receivedAt) ?? parseUzcard(candidate, receivedAt: receivedAt)
+                ?? parseUzcardShort(candidate, receivedAt: receivedAt) else {
                 continue
             }
 
@@ -229,7 +239,8 @@ enum SMSParser {
         }
 
         for candidate in templateCandidates(text) {
-            if humo.firstMatch(in: candidate) != nil || uzcard.firstMatch(in: candidate) != nil {
+            if humo.firstMatch(in: candidate) != nil || uzcard.firstMatch(in: candidate) != nil
+                || uzcardShort.firstMatch(in: candidate) != nil {
                 return true
             }
         }
@@ -395,6 +406,38 @@ enum SMSParser {
         return build(
             format: "uzcard", operation: operation, amountText: amountText, currency: currency, merchant: merchant,
             parsedDate: parsedDate, receivedAt: receivedAt, card: card, balanceText: groups[8], text: text
+        )
+    }
+
+    private static func parseUzcardShort(_ text: String, receivedAt: Date) -> ParsedSMS? {
+        guard let groups = uzcardShort.groups(in: text), groups.count >= 9,
+              let operation = groups[1], let place = groups[2], let dateText = groups[3],
+              let card = groups[4], let amountText = groups[5], let currency = groups[6]
+        else {
+            return nil
+        }
+
+        // "GULNOZA SAVDO MCHJ, chil, TOSHKENT SH": the shop comes first, the rest is the district and city.
+        let merchant = place.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? place
+
+        guard !merchant.isEmpty else {
+            return nil
+        }
+
+        let numbers = ints(dateText)
+        var parsedDate: Date?
+
+        if numbers.count == 5 {
+            parsedDate = plausible(
+                makeDate(year: numbers[2], month: numbers[1], day: numbers[0], hour: numbers[3], minute: numbers[4]),
+                swapped: makeDate(year: numbers[0], month: numbers[1], day: numbers[2], hour: numbers[3], minute: numbers[4]),
+                now: receivedAt
+            )
+        }
+
+        return build(
+            format: "uzcard", operation: operation, amountText: amountText, currency: currency, merchant: merchant,
+            parsedDate: parsedDate, receivedAt: receivedAt, card: card, balanceText: groups[7], text: text
         )
     }
 

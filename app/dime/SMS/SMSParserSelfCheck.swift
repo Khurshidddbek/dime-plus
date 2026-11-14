@@ -86,6 +86,13 @@
                 merchantKey: "uzcard to visa", merchantDisplay: "Uzcard to Visa", city: nil,
                 stamp: "202503092230", card: "8821", balanceMinor: 1_564_954_848, namesTwoNetworks: true
             ),
+            // Newer layout: no country, no commas around the date, a comma before Qoldiq. Made up text.
+            Expectation(
+                text: "Xarid: GULNOZA SAVDO MCHJ, chil, TOSHKENT SH 03.02.26 09:15 karta ***8821. Miqdor:52000.00 UZS, Qoldiq:1250000.00 UZS",
+                format: "uzcard", kind: .payment, direction: .expense, amountMinor: 5_200_000,
+                merchantKey: "gulnoza savdo", merchantDisplay: "Gulnoza Savdo", city: nil,
+                stamp: "202602030915", card: "8821", balanceMinor: 125_000_000, namesTwoNetworks: false
+            ),
         ]
 
         /// One real message from the owner's phone with what it must give.
