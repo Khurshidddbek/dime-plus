@@ -893,14 +893,14 @@
 "Not operations, skipped: %lld" = "Not operations, skipped: %lld";
 "Open the Shortcuts app and tap + to make a new shortcut." = "Open the Shortcuts app and tap + to make a new shortcut.";
 "In the action search open the Automation category and choose the Message trigger." = "In the action search open the Automation category and choose the Message trigger.";
-"Tap Sender is and type HUMOCARD, then add CARDINFO as a second sender. Type them as text, they are not in your contacts." = "Tap Sender is and type HUMOCARD, then add CARDINFO as a second sender. Type them as text, they are not in your contacts.";
+"Choose Message contains and type HUMOCARD. Leave the Sender filter out." = "Choose Message contains and type HUMOCARD. Leave the Sender filter out.";
+"In its Message text field choose the message Content." = "In its Message text field choose the message Content.";
+"Expand the trigger, keep Automation on and turn off Ask Before Running." = "Expand the trigger, keep Automation on and turn off Ask Before Running.";
+"Make a second automation the same way with the word Miqdor for Uzcard." = "Make a second automation the same way with the word Miqdor for Uzcard.";
+"Words" = "Words";
+"HUMOCARD is in every Humo message, Miqdor in every Uzcard one. Tap a word to copy it." = "HUMOCARD is in every Humo message, Miqdor in every Uzcard one. Tap a word to copy it.";
+"Type the word exactly as shown. A Sender filter with the bank name never fires, remove it." = "Type the word exactly as shown. A Sender filter with the bank name never fires, remove it.";
 "Add the action Add Bank SMS from Dime+." = "Add the action Add Bank SMS from Dime+.";
-"In its Message text field choose the message content (Shortcut Input)." = "In its Message text field choose the message content (Shortcut Input).";
-"Set it to run immediately without asking and turn off the notification when it runs. Tap Done." = "Set it to run immediately without asking and turn off the notification when it runs. Tap Done.";
-"Senders" = "Senders";
-"HUMOCARD sends the Humo messages, CARDINFO the Uzcard ones. Tap a name to copy it." = "HUMOCARD sends the Humo messages, CARDINFO the Uzcard ones. Tap a name to copy it.";
-"No Sender is on an older iOS? Use Message Contains with one of these words instead, one automation per word: %@." = "No Sender is on an older iOS? Use Message Contains with one of these words instead, one automation per word: %@.";
-"Type the sender exactly as shown, in capital letters." = "Type the sender exactly as shown, in capital letters.";
 "Add all (%lld)" = "Add all (%lld)";
 "Adds the suggestions that already have a category." = "Adds the suggestions that already have a category.";
 

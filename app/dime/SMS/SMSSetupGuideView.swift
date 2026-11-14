@@ -17,20 +17,19 @@ struct SMSSetupGuideView: View {
     @State private var sampleFailed = false
     @State private var showHelp = false
 
-    /// Sender names of the bank messages: Humo cards and Uzcard cards.
-    static let senders = ["HUMOCARD", "CARDINFO"]
-
-    /// The words the older "Message Contains" filter needs, exactly as the banks print them.
-    static let triggerWords = ["HUMOCARD", "karta", "Miqdor"]
+    /// Words for the "Message contains" filter, exactly as the banks print them: Humo, then Uzcard.
+    /// The Sender filter is not used: iOS does not match a bank name typed as text.
+    static let triggerWords = ["HUMOCARD", "Miqdor"]
 
     // The flow seen in Shortcuts on iOS 27.
     private static let steps: [LocalizedStringKey] = [
         "Open the Shortcuts app and tap + to make a new shortcut.",
         "In the action search open the Automation category and choose the Message trigger.",
-        "Tap Sender is and type HUMOCARD, then add CARDINFO as a second sender. Type them as text, they are not in your contacts.",
+        "Choose Message contains and type HUMOCARD. Leave the Sender filter out.",
         "Add the action Add Bank SMS from Dime+.",
-        "In its Message text field choose the message content (Shortcut Input).",
-        "Set it to run immediately without asking and turn off the notification when it runs. Tap Done.",
+        "In its Message text field choose the message Content.",
+        "Expand the trigger, keep Automation on and turn off Ask Before Running.",
+        "Make a second automation the same way with the word Miqdor for Uzcard.",
     ]
 
     init() {}
@@ -127,15 +126,15 @@ struct SMSSetupGuideView: View {
 
     private var words: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SMSGroupTitle(title: "Senders", count: 0)
+            SMSGroupTitle(title: "Words", count: 0)
 
-            Text("HUMOCARD sends the Humo messages, CARDINFO the Uzcard ones. Tap a name to copy it.")
+            Text("HUMOCARD is in every Humo message, Miqdor in every Uzcard one. Tap a word to copy it.")
                 .font(.system(.caption, design: .rounded).weight(.medium))
                 .foregroundColor(Color.SubtitleText)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
-                ForEach(Self.senders, id: \.self) { word in
+                ForEach(Self.triggerWords, id: \.self) { word in
                     Button {
                         SMSClipboard.shared.copy(word)
                         ToastCenter.shared.success(String(localized: "Copied \(word)"))
@@ -159,13 +158,6 @@ struct SMSSetupGuideView: View {
                     .accessibilityLabel(Text("Copy \(word)"))
                 }
             }
-
-            // Older iOS has no sender filter in the message automation.
-            Text("No Sender is on an older iOS? Use Message Contains with one of these words instead, one automation per word: \(Self.triggerWords.joined(separator: ", ")).")
-                .font(.system(.caption, design: .rounded).weight(.medium))
-                .foregroundColor(Color.SubtitleText)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
         }
         .padding(.top, 4)
     }
@@ -241,7 +233,7 @@ struct SMSSetupGuideView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     helpLine("Check that the automation is switched on in Shortcuts.")
                     helpLine("After a restart the phone has to be unlocked once before automations run.")
-                    helpLine("Type the sender exactly as shown, in capital letters.")
+                    helpLine("Type the word exactly as shown. A Sender filter with the bank name never fires, remove it.")
                     helpLine("Run Immediately needs iOS 17 or later.")
                     helpLine("A message that was missed can always be pasted by hand. The same message is never added twice.")
                 }
