@@ -2,8 +2,9 @@
 //  SMSParserSelfCheck.swift
 //  dime
 //
-//  There is no test target, so the expected parse of the owner's real messages lives here:
-//  9 samples checked field by field, all 36 real messages checked for kind, amount, direction
+//  There is no test target, so the expected parse lives here. The messages follow the layout of
+//  real bank SMS, but amounts, dates, balances and names are made up.
+//  10 samples checked field by field, 36 longer messages checked for kind, amount, direction
 //  and card, the pairing of own card transfers and the category guess from history.
 //  Debug builds only. Call SMSParserSelfCheck.run() from a debugger or the debug button in the
 //  SMS settings: an empty result means the parser still reads every sample the way it should.
@@ -95,7 +96,7 @@
             ),
         ]
 
-        /// One real message from the owner's phone with what it must give.
+        /// One message in a real bank layout (made up numbers) with what it must give.
         struct Real {
             let text: String
             let kind: SMSKind
@@ -118,7 +119,7 @@
             Real(text: text, kind: .ignored, reason: reason)
         }
 
-        // The 36 messages of real_sms_36.txt in its order: Humo *4417 (HUMOCARD), Uzcard *8821 (CARDINFO),
+        // 36 messages in the order of a real export: Humo *4417 (HUMOCARD), Uzcard *8821 (CARDINFO),
         // then the ones that are not operations.
         static let real: [Real] = [
             op("HUMOCARD *4417: oplata 48000.00 UZS; YandexGO Taxi UB OPL; 25-03-12 17:04;  Dostupno: 44159635.83 UZS",
@@ -330,7 +331,7 @@
             return failures
         }
 
-        /// The 36 real messages and the pairing of own card transfers among them.
+        /// The 36 messages and the pairing of own card transfers among them.
         private static func checkReal(now: Date) -> [String] {
             var failures = [String]()
             var parsedAll = [ParsedSMS]()

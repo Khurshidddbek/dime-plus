@@ -5,7 +5,7 @@
 //  Bank SMS parser. Foundation only, no UIKit and no Core Data, so it can be moved
 //  into a test target as is.
 //
-//  Real messages the templates were written against (also in SMSParserSelfCheck):
+//  Message layouts the templates were written against (numbers made up, also in SMSParserSelfCheck):
 //  1. HUMOCARD *4417: oplata 3960000.00 UZS; Humo to Visa>Tashken; 25-03-10 16:09;  Dostupno: 48825285.78 UZS
 //  2. HUMOCARD *4417: popolnenie 14850.00 UZS; TBC CASHBACK>TASHKEN; 25-03-12 14:41;  Dostupno: 45749635.83 UZS
 //  3. HUMOCARD *4417: oplata 42000.00 UZS; YandexGO Taxi UB OPL; 25-03-12 16:06;  Dostupno: 45707635.83 UZS
