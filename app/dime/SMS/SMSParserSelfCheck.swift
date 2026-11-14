@@ -408,7 +408,7 @@
             let phone = UUID()
             let categories = [
                 SMSCategoryInfo(id: taxi, name: "Taxi", emoji: "", colour: "#000000", income: false),
-                SMSCategoryInfo(id: debt, name: "Qarz (Qaytardim)", emoji: "", colour: "#000000", income: false),
+                SMSCategoryInfo(id: debt, name: "Qarz", emoji: "", colour: "#000000", income: false),
                 SMSCategoryInfo(id: phone, name: "Telefon", emoji: "", colour: "#000000", income: false),
                 SMSCategoryInfo(id: cashback, name: "Keshbek", emoji: "", colour: "#000000", income: true),
             ]

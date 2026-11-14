@@ -61,7 +61,7 @@ enum SMSFormat {
         cards.displayName(for: pair.fromCard) + " \u{2192} " + cards.displayName(for: pair.toCard)
     }
 
-    /// "12 Mar, 03:39, fee 2 786 so'm"
+    /// "12 Mar, 03:39, fee 8 357 so'm"
     static func pairSubtitle(_ pair: SMSTransferPair, date: Date) -> String {
         let when = dateText(date)
 
