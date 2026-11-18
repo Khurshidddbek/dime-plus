@@ -30,7 +30,9 @@ struct AddBankSMSIntent: AppIntent {
         Summary("Add bank SMS \(\.$text)")
     }
 
-    // Never throws: a text that cannot be read is stored as unrecognised and shown in the inbox.
+    // A text that cannot be read is still stored as unrecognised and shown in the inbox.
+    // Throws only when nothing could be stored: the automation stops there, so the Tapback
+    // after this action marks only the messages that really reached the app.
     // The returned line ("Added 42 000 so'm to Taxi", "To review: 1") can be chained into
     // "Show Notification" or "Speak Text" in Shortcuts.
     @MainActor
@@ -39,7 +41,19 @@ struct AddBankSMSIntent: AppIntent {
             text: text ?? "", receivedAt: Date(), source: .automation, allowAutoAdd: true, notify: true
         )
 
+        if result.failed {
+            throw AddBankSMSError.notStored
+        }
+
         return .result(value: result.summary)
+    }
+}
+
+enum AddBankSMSError: Error, CustomLocalizedStringResourceConvertible {
+    case notStored
+
+    var localizedStringResource: LocalizedStringResource {
+        "Couldn't store the message. Open the app and paste it."
     }
 }
 
