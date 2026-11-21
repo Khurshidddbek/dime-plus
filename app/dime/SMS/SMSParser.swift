@@ -44,7 +44,7 @@ enum SMSDirection: String, Codable {
 }
 
 struct ParsedSMS: Codable, Equatable {
-    var format: String // "humo" | "uzcard" | "uzum" | "generic"
+    var format: String // "humo" | "uzcard" | "uzum" | "nbu" | "generic"
     var kind: SMSKind
     var direction: SMSDirection?
     /// Amount in 1/100 of the currency unit: 3960000.00 is 396000000. Exact, safe to compare and to store.
@@ -167,6 +167,13 @@ enum SMSParser {
             + amt + #"))\s*([A-Za-z]{3})"#
     )
 
+    // NBU (made up example): "Pokupka, KORZINKA CHILONZOR 03.02.25 09:15, karta 418000******1234. summa: 52 000.00 UZS, balans: 12.50 USD"
+    // groups: 1 operation, 2 merchant, 3 date, 4 card, 5 amount, 6 currency, 7 balance?, 8 balance currency?
+    private static let nbu = rx(
+        #"^([^,:]{3,40}?)\s*,\s*(.+?)\s+(\d{2}\.\d{2}\.\d{2,4}\s+\d{1,2}:\d{2})\s*,\s*(?:karta|card)\s*\d*\*+\s*(\d{4})\s*\.?\s*summa\s*:\s*("#
+            + amt + #")\s*([A-Za-z]{3})\s*(?:,\s*(?:balans|balance)\s*:\s*(-?(?:"# + amt + #"))\s*([A-Za-z]{3}))?"#
+    )
+
     private static let genericBalance = rx(
         #"(?:dostupno|qoldiq|balans|balance|ostatok|mavjud|available|остаток|доступно|баланс|қолдиқ)\s*:?\s*(-?(?:"#
             + amt + #"))\s*([A-Za-z']{3,4})?"#
@@ -221,7 +228,8 @@ enum SMSParser {
 
         for candidate in templateCandidates(text) {
             guard let parsed = parseHumo(candidate, receivedAt: receivedAt) ?? parseUzcard(candidate, receivedAt: receivedAt)
-                ?? parseUzcardShort(candidate, receivedAt: receivedAt) ?? parseUzumPush(candidate, receivedAt: receivedAt) else {
+                ?? parseUzcardShort(candidate, receivedAt: receivedAt) ?? parseUzumPush(candidate, receivedAt: receivedAt)
+                ?? parseNBU(candidate, receivedAt: receivedAt) else {
                 continue
             }
 
@@ -251,7 +259,8 @@ enum SMSParser {
 
         for candidate in templateCandidates(text) {
             if humo.firstMatch(in: candidate) != nil || uzcard.firstMatch(in: candidate) != nil
-                || uzcardShort.firstMatch(in: candidate) != nil || uzumPush.firstMatch(in: candidate) != nil {
+                || uzcardShort.firstMatch(in: candidate) != nil || uzumPush.firstMatch(in: candidate) != nil
+                || nbu.firstMatch(in: candidate) != nil {
                 return true
             }
         }
@@ -417,6 +426,31 @@ enum SMSParser {
         return build(
             format: "uzcard", operation: operation, amountText: amountText, currency: currency, merchant: merchant,
             parsedDate: parsedDate, receivedAt: receivedAt, card: card, balanceText: groups[8], text: text
+        )
+    }
+
+    private static func parseNBU(_ text: String, receivedAt: Date) -> ParsedSMS? {
+        guard let groups = nbu.groups(in: text), groups.count >= 9,
+              let operation = groups[1], let merchant = groups[2], let dateText = groups[3],
+              let card = groups[4], let amountText = groups[5], let currency = groups[6]
+        else {
+            return nil
+        }
+
+        let numbers = ints(dateText)
+        var parsedDate: Date?
+
+        if numbers.count == 5 {
+            parsedDate = plausible(
+                makeDate(year: numbers[2], month: numbers[1], day: numbers[0], hour: numbers[3], minute: numbers[4]),
+                swapped: makeDate(year: numbers[0], month: numbers[1], day: numbers[2], hour: numbers[3], minute: numbers[4]),
+                now: receivedAt
+            )
+        }
+
+        return build(
+            format: "nbu", operation: operation, amountText: amountText, currency: currency, merchant: merchant,
+            parsedDate: parsedDate, receivedAt: receivedAt, card: card, balanceText: groups[7], text: text
         )
     }
 

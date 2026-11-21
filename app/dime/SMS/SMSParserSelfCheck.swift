@@ -343,6 +343,26 @@
             )
             expect("uzum promo: no amount", uzumPromo.amountMinor == nil)
 
+            // NBU, made up numbers. The balance comes in USD while the card pays in UZS.
+            let nbuBuy = SMSParser.parse(
+                "Pokupka, KORZINKA CHILONZOR 03.02.25 09:15, karta 418000******1234. summa: 52 000.00 UZS, balans: 12.50 USD",
+                receivedAt: now
+            )
+            expect("nbu purchase: format", nbuBuy.format == "nbu")
+            expect("nbu purchase: kind", nbuBuy.kind == .payment)
+            expect("nbu purchase: direction", nbuBuy.direction == .expense)
+            expect("nbu purchase: amount", nbuBuy.amountMinor == 5_200_000)
+            expect("nbu purchase: currency", nbuBuy.currency == "UZS")
+            expect("nbu purchase: card", nbuBuy.cardLast4 == "1234")
+            expect("nbu purchase: key", nbuBuy.merchantKey == "korzinka chilonzor")
+            expect("nbu purchase: date", SMSParser.stamp(nbuBuy.date) == "202502030915")
+
+            let nbuDeclined = SMSParser.parse(
+                "Nedostatochno sredstv, KORZINKA CHILONZOR 03.02.25 09:20, karta 418000******1234. summa: 52 000.00 UZS, balans: 12.50 USD",
+                receivedAt: now
+            )
+            expect("nbu declined: ignored", nbuDeclined.kind == .ignored)
+
             let amounts: [(String, Int64)] = [
                 ("42000", 4_200_000), ("14000.5", 1_400_050), ("3,960,000", 396_000_000),
                 ("1.320.000,50", 132_000_050), ("-5.00", -500),
