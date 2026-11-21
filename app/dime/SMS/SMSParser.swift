@@ -44,7 +44,7 @@ enum SMSDirection: String, Codable {
 }
 
 struct ParsedSMS: Codable, Equatable {
-    var format: String // "humo" | "uzcard" | "generic"
+    var format: String // "humo" | "uzcard" | "uzum" | "generic"
     var kind: SMSKind
     var direction: SMSDirection?
     /// Amount in 1/100 of the currency unit: 3960000.00 is 396000000. Exact, safe to compare and to store.
@@ -157,6 +157,16 @@ enum SMSParser {
             + amt + #")\s*([A-Za-z]{3})\s*,?\s*(?:(?:Qoldiq|Balans)\s*:\s*(-?(?:"# + amt + #"))\s*([A-Za-z]{3}))?"#
     )
 
+    // Uzum Bank push, title and body joined by ": " in AddBankNotificationIntent. Made up examples:
+    // "Покупка: 52 000 UZS, карта *4417, GULNOZA SAVDO MCHJ. Доступно: 1 250 000,00 UZS"
+    // "Перевод отправлен: 17 000 UZS, карта *4417, P2P VISAUZUM TO UZCARD. Доступно 1 233 000,00 UZS"
+    // "Карта пополнена: 500 000 UZS от ALIJON VALIYEV, карта *4417. Доступно: 1 733 000,00 UZS"
+    // groups: 1 operation, 2 amount, 3 currency, 4 sender?, 5 card, 6 merchant?, 7 balance, 8 balance currency
+    private static let uzumPush = rx(
+        #"^([^\d:*]{3,40}?)\s*:\s*("# + amt + #")\s*([A-Za-z]{3})\s*(?:от\s+(.+?)\s*)?,\s*(?:карта|karta|card)\s*\*+\s*(\d{4})\s*(?:,\s*(.+?))?\s*\.\s*(?:Доступно|Dostupno)\s*:?\s*(-?(?:"#
+            + amt + #"))\s*([A-Za-z]{3})"#
+    )
+
     private static let genericBalance = rx(
         #"(?:dostupno|qoldiq|balans|balance|ostatok|mavjud|available|остаток|доступно|баланс|қолдиқ)\s*:?\s*(-?(?:"#
             + amt + #"))\s*([A-Za-z']{3,4})?"#
@@ -175,7 +185,8 @@ enum SMSParser {
     // "MC-MIR SHOP" is a shop and ">" separates the city in Humo messages.
     private static let networks = "(?:humo|uzcard|visa|mastercard|master|mc|mir|unionpay|upi)"
     // "HUMO NA UZ" (TBC) names Uzcard as plain "uz", only on the receiving side.
-    private static let networkPair = rx(#"\b"# + networks + #"\s*(?:to|2|na)\s*(?:"# + networks + #"|uz)\b"#)
+    // Uzum glues its name to the network: "P2P VISAUZUM TO UZCARD".
+    private static let networkPair = rx(#"\b"# + networks + #"(?:uzum)?\s*(?:to|2|na)\s*(?:"# + networks + #"|uz)\b"#)
     private static let transferWord = rx(#"\b(?:p2p|h2u|u2h|h2h|u2u|h2v|u2v|v2h|v2u|card2card|c2c|perevod|otkazma)\b"#)
 
     private static let humoStart = rx(#"HUMO\s*CARD\s*\*"#)
@@ -210,7 +221,7 @@ enum SMSParser {
 
         for candidate in templateCandidates(text) {
             guard let parsed = parseHumo(candidate, receivedAt: receivedAt) ?? parseUzcard(candidate, receivedAt: receivedAt)
-                ?? parseUzcardShort(candidate, receivedAt: receivedAt) else {
+                ?? parseUzcardShort(candidate, receivedAt: receivedAt) ?? parseUzumPush(candidate, receivedAt: receivedAt) else {
                 continue
             }
 
@@ -240,7 +251,7 @@ enum SMSParser {
 
         for candidate in templateCandidates(text) {
             if humo.firstMatch(in: candidate) != nil || uzcard.firstMatch(in: candidate) != nil
-                || uzcardShort.firstMatch(in: candidate) != nil {
+                || uzcardShort.firstMatch(in: candidate) != nil || uzumPush.firstMatch(in: candidate) != nil {
                 return true
             }
         }
@@ -406,6 +417,22 @@ enum SMSParser {
         return build(
             format: "uzcard", operation: operation, amountText: amountText, currency: currency, merchant: merchant,
             parsedDate: parsedDate, receivedAt: receivedAt, card: card, balanceText: groups[8], text: text
+        )
+    }
+
+    private static func parseUzumPush(_ text: String, receivedAt: Date) -> ParsedSMS? {
+        guard let groups = uzumPush.groups(in: text), groups.count >= 9,
+              let operation = groups[1], let amountText = groups[2], let currency = groups[3], let card = groups[5]
+        else {
+            return nil
+        }
+
+        // A push has no time of its own: the moment it arrived is the time of the operation.
+        let merchant = groups[6] ?? groups[4] ?? operation
+
+        return build(
+            format: "uzum", operation: operation, amountText: amountText, currency: currency, merchant: merchant,
+            parsedDate: nil, receivedAt: receivedAt, card: card, balanceText: groups[7], text: text
         )
     }
 
@@ -722,7 +749,7 @@ enum SMSParser {
             (.refund, ["vozvrat", "qaytar", "refund", "otmena", "reversal", "bekor", "возврат", "отмена", "қайтар", "бекор"]),
             (.income, [
                 "popolnenie", "kartaga otkazma", "zachislen", "postuplen", "kirim", "tushum", "tushdi", "credit",
-                "hisobni toldirish", "пополнение", "зачислен", "поступлен", "кирим", "тушум", "тушди",
+                "hisobni toldirish", "пополнен", "зачислен", "поступлен", "перевод получен", "кирим", "тушум", "тушди",
             ]),
             (.payment, [
                 "oplata", "tolov", "pokupka", "xarid", "spisanie", "platezh", "payment", "purchase", "kartadan otkazma",

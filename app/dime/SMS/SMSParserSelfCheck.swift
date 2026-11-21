@@ -310,6 +310,39 @@
             expect("generic so'm: currency", som.currency == "UZS")
             expect("generic so'm: direction", som.direction == .income)
 
+            // Uzum Bank pushes, title and body joined by the notification intent. Made up numbers.
+            let uzumBuy = SMSParser.parse(
+                "Покупка: 52 000 UZS, карта *4417, GULNOZA SAVDO MCHJ. Доступно: 1 250 000,00 UZS", receivedAt: now
+            )
+            expect("uzum purchase: format", uzumBuy.format == "uzum")
+            expect("uzum purchase: kind", uzumBuy.kind == .payment)
+            expect("uzum purchase: direction", uzumBuy.direction == .expense)
+            expect("uzum purchase: amount", uzumBuy.amountMinor == 5_200_000)
+            expect("uzum purchase: card", uzumBuy.cardLast4 == "4417")
+            expect("uzum purchase: key", uzumBuy.merchantKey == "gulnoza savdo")
+            expect("uzum purchase: balance", uzumBuy.balanceMinor == 125_000_000)
+
+            let uzumSent = SMSParser.parse(
+                "Перевод отправлен: 17 000 UZS, карта *4417, P2P VISAUZUM TO UZCARD. Доступно 1 233 000,00 UZS", receivedAt: now
+            )
+            expect("uzum transfer: kind", uzumSent.kind == .transfer)
+            expect("uzum transfer: direction", uzumSent.direction == .expense)
+            expect("uzum transfer: amount", uzumSent.amountMinor == 1_700_000)
+            expect("uzum transfer: two networks", uzumSent.namesTwoNetworks)
+            expect("uzum transfer: balance", uzumSent.balanceMinor == 123_300_000)
+
+            let uzumIn = SMSParser.parse(
+                "Карта пополнена: 500 000 UZS от ALIJON VALIYEV, карта *4417. Доступно: 1 733 000,00 UZS", receivedAt: now
+            )
+            expect("uzum top up: kind", uzumIn.kind == .topUp)
+            expect("uzum top up: direction", uzumIn.direction == .income)
+            expect("uzum top up: amount", uzumIn.amountMinor == 50_000_000)
+
+            let uzumPromo = SMSParser.parse(
+                "Акция: Разыскиваются товары за 1 000 сум. Точка на карте - Uzum Market", receivedAt: now
+            )
+            expect("uzum promo: no amount", uzumPromo.amountMinor == nil)
+
             let amounts: [(String, Int64)] = [
                 ("42000", 4_200_000), ("14000.5", 1_400_050), ("3,960,000", 396_000_000),
                 ("1.320.000,50", 132_000_050), ("-5.00", -500),

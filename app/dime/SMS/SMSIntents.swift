@@ -57,6 +57,46 @@ enum AddBankSMSError: Error, CustomLocalizedStringResourceConvertible {
     }
 }
 
+/// For banks that push a notification instead of sending an SMS (Uzum Visa).
+/// The title carries the operation ("Покупка", "Перевод отправлен"), the body the amount and card,
+/// so both are read together.
+struct AddBankNotificationIntent: AppIntent {
+    static var title: LocalizedStringResource = "Add Bank Notification"
+
+    static var description = IntentDescription(
+        "Reads a bank app notification and adds it as a transaction or as a suggestion to review. Promos and news are skipped."
+    )
+
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Notification title")
+    var heading: String?
+
+    @Parameter(title: "Notification text")
+    var body: String?
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Add bank notification \(\.$heading) \(\.$body)")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        let parts = [heading, body]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        let result = SMSIngestor.shared.ingest(
+            text: parts.joined(separator: ": "), receivedAt: Date(), source: .notification, allowAutoAdd: true, notify: true
+        )
+
+        if result.failed {
+            throw AddBankSMSError.notStored
+        }
+
+        return .result(value: result.summary)
+    }
+}
+
 struct OpenSMSInboxIntent: AppIntent {
     static var title: LocalizedStringResource = "Review Bank Messages"
 

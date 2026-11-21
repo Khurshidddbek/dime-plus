@@ -699,6 +699,11 @@
 "Reads a bank SMS and adds it as a transaction or as a suggestion to review." = "Читает SMS банка и добавляет его как операцию или как предложение на проверку.";
 "Message text" = "Текст сообщения";
 "Add bank SMS ${text}" = "Добавить SMS банка ${text}";
+"Add Bank Notification" = "Добавить уведомление банка";
+"Reads a bank app notification and adds it as a transaction or as a suggestion to review. Promos and news are skipped." = "Читает уведомление приложения банка и добавляет его как операцию или как предложение на проверку. Акции и новости пропускает.";
+"Notification title" = "Заголовок уведомления";
+"Notification text" = "Текст уведомления";
+"Add bank notification ${heading} ${body}" = "Добавить уведомление банка ${heading} ${body}";
 "Review Bank Messages" = "Проверить сообщения банка";
 "Opens the bank messages that wait for review." = "Открывает сообщения банка, которые ждут проверки.";
 "Review bank messages in ${applicationName}" = "Проверить сообщения банка в ${applicationName}";

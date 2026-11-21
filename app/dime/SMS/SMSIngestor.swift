@@ -276,7 +276,7 @@ final class SMSIngestor {
         // An automation hands over exactly one SMS. If Shortcuts passes it as several lines
         // ("sender" + line break + "body", or a wrapped body), read it as one message: a line
         // like "HUMOCARD" on its own would otherwise land in the inbox as unrecognised.
-        if source == .automation, messages.count > 1 {
+        if source.isAutomatic, messages.count > 1 {
             let whole = text.trimmingCharacters(in: .whitespacesAndNewlines)
             let readable = messages.filter { SMSParser.parse($0, receivedAt: receivedAt).amountMinor != nil }
 
@@ -290,6 +290,9 @@ final class SMSIngestor {
             var status = SMSPreviewItem.Status.fresh
 
             if parsed.kind == .ignored {
+                status = .ignored
+            } else if parsed.amountMinor == nil, source == .notification {
+                // A bank app also pushes promos and news. A push without an operation is not worth a review.
                 status = .ignored
             } else if parsed.amountMinor == nil, source != .automation, !SMSParser.looksLikeBankMessage(message) {
                 // A stray line of a pasted block ("Today 16:06"), not a bank message.
@@ -363,7 +366,7 @@ final class SMSIngestor {
             return result
         }
 
-        if source == .automation {
+        if source.isAutomatic {
             inbox.noteAutomationRun()
         }
 
@@ -474,7 +477,7 @@ final class SMSIngestor {
             {
                 takenTransactions.insert(duplicate.id)
 
-                if duplicate.strong, source == .automation, duplicate.seconds <= 600 {
+                if duplicate.strong, source.isAutomatic, duplicate.seconds <= 600 {
                     // The owner typed it at the till a moment ago: link it, show nothing.
                     ledgerEntries.append(entry(for: parsed, resolution: .duplicate, transactionID: duplicate.id, ruleID: nil, batchID: batchID))
                     result.alreadyLogged += 1

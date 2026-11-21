@@ -696,6 +696,11 @@
 "Reads a bank SMS and adds it as a transaction or as a suggestion to review." = "Reads a bank SMS and adds it as a transaction or as a suggestion to review.";
 "Message text" = "Message text";
 "Add bank SMS ${text}" = "Add bank SMS ${text}";
+"Add Bank Notification" = "Add Bank Notification";
+"Reads a bank app notification and adds it as a transaction or as a suggestion to review. Promos and news are skipped." = "Reads a bank app notification and adds it as a transaction or as a suggestion to review. Promos and news are skipped.";
+"Notification title" = "Notification title";
+"Notification text" = "Notification text";
+"Add bank notification ${heading} ${body}" = "Add bank notification ${heading} ${body}";
 "Review Bank Messages" = "Review Bank Messages";
 "Opens the bank messages that wait for review." = "Opens the bank messages that wait for review.";
 "Review bank messages in ${applicationName}" = "Review bank messages in ${applicationName}";

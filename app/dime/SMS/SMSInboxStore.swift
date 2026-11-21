@@ -12,6 +12,7 @@ import Foundation
 
 enum SMSSource: String, Codable {
     case automation // Shortcuts message automation
+    case notification // Shortcuts notification automation, a bank app push instead of an SMS
     case paste
     case file
     case test
@@ -283,5 +284,12 @@ final class SMSInboxStore: ObservableObject {
         }
 
         ledgerFile.save(ledger)
+    }
+}
+
+extension SMSSource {
+    /// Handed over by a Shortcuts automation, one message per run.
+    var isAutomatic: Bool {
+        self == .automation || self == .notification
     }
 }
